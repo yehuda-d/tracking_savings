@@ -19,3 +19,10 @@ export const textEnd = textStart === 'right' ? ('left' as const) : ('right' as c
 /** Icon pointing "back" (toward the start, i.e. right) and "forward". */
 export const backIcon = 'chevron-right' as const;
 export const forwardIcon = 'chevron-left' as const;
+
+/**
+ * Absolute offset from the physical left edge. RN swaps left/right under native RTL,
+ * so in that case the value must be given as `right`.
+ */
+export const physicalLeft = (n: number) =>
+  Platform.OS !== 'web' && I18nManager.isRTL ? { right: n } : { left: n };
