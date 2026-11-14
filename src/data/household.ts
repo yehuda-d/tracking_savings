@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { supabase } from '@/lib/supabase';
@@ -21,5 +21,29 @@ export function useMyHousehold() {
     queryKey: queryKeys.household,
     queryFn: fetchMyHousehold,
     enabled: Boolean(session),
+  });
+}
+
+export function useCreateHousehold() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string): Promise<Household> => {
+      const { data, error } = await supabase.rpc('create_household', { p_name: name });
+      if (error) throw error;
+      return data as Household;
+    },
+    onSuccess: (household) => queryClient.setQueryData(queryKeys.household, household),
+  });
+}
+
+export function useJoinHousehold() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (code: string): Promise<Household> => {
+      const { data, error } = await supabase.rpc('join_household', { p_code: code });
+      if (error) throw error;
+      return data as Household;
+    },
+    onSuccess: (household) => queryClient.setQueryData(queryKeys.household, household),
   });
 }
