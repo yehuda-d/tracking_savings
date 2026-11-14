@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '@/lib/supabase';
-import type { SavingWithBalance } from '@/lib/types';
+import type { SavingInput, SavingWithBalance } from '@/lib/types';
 
 import { queryKeys } from './queryKeys';
 
@@ -28,5 +28,62 @@ export function useSaving(id: string) {
       return (data as SavingWithBalance | null) ?? null;
     },
     enabled: Boolean(id),
+  });
+}
+
+export function useCreateSaving() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SavingInput & { openingAgorot: number }): Promise<string> => {
+      const { data, error } = await supabase.rpc('create_saving', {
+        p_purpose: input.purpose,
+        p_location_type: input.location_type,
+        p_institution: input.institution,
+        p_notes: input.notes,
+        p_opening_agorot: input.openingAgorot,
+      });
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.savings }),
+  });
+}
+
+export function useUpdateSaving() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...input }: { id: string } & SavingInput): Promise<void> => {
+      const { data, error } = await supabase
+        .from('savings')
+        .update({
+          purpose: input.purpose,
+          location_type: input.location_type,
+          institution: input.institution,
+          notes: input.notes,
+        })
+        .eq('id', id)
+        .select('id');
+      if (error) throw error;
+      if (!data?.length) throw new Error('NOT_FOUND');
+    },
+    onSuccess: (_void, { id }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.savings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.saving(id) });
+    },
+  });
+}
+
+export function useDeleteSaving() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      const { error } = await supabase.from('savings').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_void, id) => {
+      queryClient.removeQueries({ queryKey: queryKeys.saving(id) });
+      queryClient.removeQueries({ queryKey: queryKeys.transactions(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.savings });
+    },
   });
 }

@@ -11,6 +11,7 @@ const MESSAGES: [fragment: string, hebrew: string][] = [
   ['INVALID_DATE', 'תאריך לא תקין'],
   ['NOT_IN_HOUSEHOLD', 'אינך חבר במשק בית'],
   ['NOT_AUTHENTICATED', 'צריך להתחבר מחדש'],
+  ['NOT_FOUND', 'הפריט לא נמצא. ייתכן שנמחק'],
   ['Invalid login credentials', 'אימייל או סיסמה שגויים'],
   ['User already registered', 'כבר קיים משתמש עם האימייל הזה'],
   ['Password should be at least', 'הסיסמה צריכה להיות לפחות 6 תווים'],

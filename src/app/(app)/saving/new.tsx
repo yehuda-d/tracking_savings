@@ -1,11 +1,32 @@
-import { AppText } from '@/components/AppText';
-import { Screen } from '@/components/Screen';
+import { useRouter } from 'expo-router';
+import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 
-/** Placeholder; implemented in a later task. */
-export default function Placeholder() {
+import { SavingForm } from '@/components/SavingForm';
+import { Screen } from '@/components/Screen';
+import { useCreateSaving } from '@/data/savings';
+import { toHebrewError } from '@/lib/errors';
+
+export default function NewSaving() {
+  const router = useRouter();
+  const create = useCreateSaving();
+
   return (
-    <Screen title="בקרוב">
-      <AppText>המסך הזה עוד בבנייה</AppText>
-    </Screen>
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Screen title="חיסכון חדש" onBack={() => router.back()} scroll>
+        <SavingForm
+          mode="create"
+          submitting={create.isPending}
+          serverError={create.error ? toHebrewError(create.error) : null}
+          onSubmit={(value) =>
+            create.mutate(
+              { ...value, openingAgorot: value.openingAgorot ?? 0 },
+              { onSuccess: (id) => router.replace({ pathname: '/saving/[id]', params: { id } }) },
+            )
+          }
+        />
+      </Screen>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({ flex: { flex: 1 } });

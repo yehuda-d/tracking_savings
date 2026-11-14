@@ -8,6 +8,7 @@ describe('toHebrewError', () => {
     ['NOT_OWNER', 'רק מנהל משק הבית יכול לעשות את זה'],
     ['CANNOT_REMOVE_SELF', 'אי אפשר להסיר את עצמך. אפשר לעזוב את משק הבית בהגדרות'],
     ['INVALID_DATE', 'תאריך לא תקין'],
+    ['NOT_FOUND', 'הפריט לא נמצא. ייתכן שנמחק'],
     ['NOT_IN_HOUSEHOLD', 'אינך חבר במשק בית'],
     ['Invalid login credentials', 'אימייל או סיסמה שגויים'],
     ['User already registered', 'כבר קיים משתמש עם האימייל הזה'],
