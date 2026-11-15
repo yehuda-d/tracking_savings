@@ -107,10 +107,10 @@ function SavingCard({ saving, onPress }: { saving: SavingWithBalance; onPress: (
           <MaterialCommunityIcons name={locationIcon(saving.location_type)} size={24} color={colors.primary} />
         </View>
         <View style={styles.cardText}>
-          <AppText weight="bold" size="lg" numberOfLines={1}>
+          <AppText weight="bold" size="lg">
             {saving.purpose}
           </AppText>
-          <AppText color={colors.textMuted} size="sm" numberOfLines={1}>
+          <AppText color={colors.textMuted} size="sm">
             {locationLabel(saving.location_type)} · {saving.institution}
           </AppText>
         </View>

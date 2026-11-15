@@ -37,7 +37,7 @@ export function Screen({ title, onBack, right, children, scroll, refreshControl 
             </Pressable>
           ) : null}
           {title ? (
-            <AppText size="lg" weight="bold" numberOfLines={1} style={styles.title}>
+            <AppText size="lg" weight="bold" style={styles.title}>
               {title}
             </AppText>
           ) : null}
