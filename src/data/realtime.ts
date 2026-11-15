@@ -29,7 +29,10 @@ export function useHouseholdRealtime(householdId: string | undefined) {
     for (const table of TABLES) {
       channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, invalidate);
     }
-    channel.subscribe();
+    // Resync on every (re)join: events missed while the socket was down are not replayed.
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') invalidate();
+    });
     return () => {
       supabase.removeChannel(channel);
     };

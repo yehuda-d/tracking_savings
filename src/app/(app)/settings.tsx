@@ -113,12 +113,21 @@ export default function Settings() {
       case 'leave':
         return {
           title: 'לעזוב את משק הבית?',
-          message: list.length <= 1 ? undefined : 'החסכונות יישארו אצל שאר החברים. כדי לחזור תצטרך קוד הזמנה.',
+          message: 'החסכונות יישארו אצל שאר החברים. כדי לחזור תצטרך קוד הזמנה.',
           confirmText: 'עזיבה',
           destructive: true,
           loading: leave.isPending,
-          error: leave.error ? toHebrewError(leave.error) : null,
-          onConfirm: () => (list.length <= 1 ? setDialog({ type: 'leaveLast' }) : leave.mutate()),
+          error: leave.error && !String(leave.error.message).includes('LAST_MEMBER') ? toHebrewError(leave.error) : null,
+          // The server decides whether we're the last member (the cached list may be stale).
+          onConfirm: () =>
+            leave.mutate(false, {
+              onError: (e) => {
+                if (String(e.message).includes('LAST_MEMBER')) {
+                  leave.reset();
+                  setDialog({ type: 'leaveLast' });
+                }
+              },
+            }),
         };
       case 'leaveLast':
         return {
@@ -128,7 +137,7 @@ export default function Settings() {
           destructive: true,
           loading: leave.isPending,
           error: leave.error ? toHebrewError(leave.error) : null,
-          onConfirm: () => leave.mutate(),
+          onConfirm: () => leave.mutate(true),
         };
       default:
         return null;

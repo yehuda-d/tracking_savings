@@ -7,19 +7,21 @@ export type ParseAmountResult = { ok: true; agorot: number } | { ok: false; erro
 
 const PLAIN = /^\d+(\.\d{1,2})?$/;
 const GROUPED = /^\d{1,3}(,\d{3})+(\.\d{1,2})?$/;
+const SPACE_GROUPED = /^\d{1,3}( \d{3})+(\.\d{1,2})?$/;
 
 /**
  * Parses user-typed shekel amounts into integer agorot without float math.
- * Accepts "1,000", "1,000.5", "₪300", " 250 ". Rejects zero, negatives,
+ * Accepts "1,000", "1 000", "1,000.5", "₪300", " 250 ". Rejects zero, negatives,
  * more than two decimals and ambiguous commas such as "12,5".
  */
 export function parseAmountInput(input: string): ParseAmountResult {
-  const cleaned = input.replace(/₪/g, '').replace(/\s+/g, '');
+  // Internal spaces are kept so "12 5" is rejected instead of silently becoming 125.
+  const cleaned = input.replace(/₪/g, '').replace(/\s+/g, ' ').trim();
   if (cleaned === '') return { ok: false, error: 'נא להזין סכום' };
-  if (!PLAIN.test(cleaned) && !GROUPED.test(cleaned)) {
+  if (!PLAIN.test(cleaned) && !GROUPED.test(cleaned) && !SPACE_GROUPED.test(cleaned)) {
     return { ok: false, error: 'סכום לא תקין' };
   }
-  const [whole, fraction = ''] = cleaned.replace(/,/g, '').split('.');
+  const [whole, fraction = ''] = cleaned.replace(/[, ]/g, '').split('.');
   const wholeDigits = whole.replace(/^0+(?=\d)/, '');
   if (wholeDigits.length > 9) return { ok: false, error: 'הסכום גדול מדי' };
   const agorot = Number(wholeDigits) * 100 + Number(fraction.padEnd(2, '0'));

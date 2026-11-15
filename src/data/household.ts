@@ -120,8 +120,9 @@ export function useRemoveMember() {
 export function useLeaveHousehold() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (): Promise<void> => {
-      const { error } = await supabase.rpc('leave_household');
+    /** confirmDelete must be true to leave as the last member (deletes the household). */
+    mutationFn: async (confirmDelete: boolean): Promise<void> => {
+      const { error } = await supabase.rpc('leave_household', { p_confirm_delete: confirmDelete });
       if (error) throw error;
     },
     onSuccess: () => {

@@ -49,4 +49,13 @@ describe('TransactionSheet', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'הוסף' }));
     expect(mockMutate).not.toHaveBeenCalled();
   });
+
+  it('ignores the Android back button while a request is pending', async () => {
+    mockIsPending = true;
+    const onClose = jest.fn();
+    const view = await render(<TransactionSheet visible savingId="s1" kind="deposit" balanceAgorot={0} onClose={onClose} />);
+    expect(view.root!.type).toBe("Modal");
+    view.root!.props.onRequestClose();
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

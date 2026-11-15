@@ -144,6 +144,13 @@ declare
 begin
   if tg_op = 'INSERT' then
     v_saving := new.saving_id;
+    -- BEFORE triggers run before RLS WITH CHECK. For a saving outside the caller's household,
+    -- step aside and let RLS reject the row, so the error never reveals the other balance.
+    if auth.uid() is not null and not exists (
+      select 1 from public.savings s where s.id = new.saving_id and s.household_id = public.my_household_id()
+    ) then
+      return new;
+    end if;
     if new.occurred_on > current_date + 1 then
       raise exception 'INVALID_DATE';
     end if;
@@ -397,7 +404,9 @@ begin
 end;
 $$;
 
-create or replace function public.leave_household()
+-- p_confirm_delete must be true when the caller is the last member: the server, not a
+-- possibly stale client list, decides whether leaving deletes the household.
+create or replace function public.leave_household(p_confirm_delete boolean default false)
 returns void
 language plpgsql
 security definer
@@ -410,6 +419,13 @@ declare
 begin
   if v_uid is null then raise exception 'NOT_AUTHENTICATED'; end if;
   if v_hid is null then raise exception 'NOT_IN_HOUSEHOLD'; end if;
+  -- Serialize concurrent leaves/removals in this household so it can't end up memberless.
+  perform 1 from public.households where id = v_hid for update;
+  if not coalesce(p_confirm_delete, false) and not exists (
+    select 1 from public.household_members where household_id = v_hid and user_id <> v_uid
+  ) then
+    raise exception 'LAST_MEMBER';
+  end if;
   select role into v_role from public.household_members where user_id = v_uid;
   delete from public.household_members where user_id = v_uid;
   if not exists (select 1 from public.household_members where household_id = v_hid) then
@@ -435,7 +451,7 @@ revoke execute on function
   public.assert_owner(),
   public.regenerate_invite_code(),
   public.remove_member(uuid),
-  public.leave_household(),
+  public.leave_household(boolean),
   public.my_household_id()
 from public, anon;
 grant execute on function
@@ -444,7 +460,7 @@ grant execute on function
   public.create_saving(text, public.location_type, text, text, bigint),
   public.regenerate_invite_code(),
   public.remove_member(uuid),
-  public.leave_household(),
+  public.leave_household(boolean),
   public.my_household_id()
 to authenticated;
 

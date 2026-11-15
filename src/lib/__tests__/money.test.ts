@@ -11,12 +11,14 @@ describe('parseAmountInput', () => {
     ['0.01', 1],
     ['12.34', 1234],
     ['1,234,567.89', 123456789],
+    ['1 000', 100000],
+    ['12 345.5', 1234550],
     ['999999999.99', 99999999999],
   ])('parses %p to %p agorot', (input, agorot) => {
     expect(parseAmountInput(input)).toEqual({ ok: true, agorot });
   });
 
-  it.each(['', '   ', 'abc', '12,5', '1.234', '-5', '0', '0.00', '1000000000', '1,00', '1..2', '.5.'])(
+  it.each(['', '   ', 'abc', '12,5', '1.234', '-5', '0', '0.00', '1000000000', '1,00', '1..2', '.5.', '12 5', '1 2', '1 00'])(
     'rejects %p with a Hebrew error',
     (input) => {
       const r = parseAmountInput(input);

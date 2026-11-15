@@ -1,17 +1,19 @@
 import { Heebo_400Regular, Heebo_500Medium, Heebo_700Bold, useFonts } from '@expo-google-fonts/heebo';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, useRouter, useSegments, type Href } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AuthProvider, useAuth } from '@/auth/AuthProvider';
+import { Button } from '@/components/Button';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { useMyHousehold } from '@/data/household';
-import { toHebrewError } from '@/lib/errors';
-import { resolveRoute, type RouteGroup } from '@/lib/routing';
+import { queryKeys } from '@/data/queryKeys';
+import { shouldResyncHousehold, toHebrewError } from '@/lib/errors';
+import { householdStateOf, resolveRoute, type RouteGroup } from '@/lib/routing';
 import { supabaseConfigured } from '@/lib/supabase';
 import { colors } from '@/theme/tokens';
 
@@ -29,19 +31,13 @@ function groupOf(first: string | undefined): RouteGroup {
 }
 
 function Guard() {
-  const { session, loading } = useAuth();
+  const { session, loading, signOut } = useAuth();
   const household = useMyHousehold();
   const segments = useSegments();
   const router = useRouter();
   const currentGroup = groupOf(segments[0]);
 
-  const householdState = household.isError
-    ? 'error'
-    : household.isPending
-      ? 'loading'
-      : household.data
-        ? 'some'
-        : 'none';
+  const householdState = householdStateOf(household);
 
   const target = resolveRoute({ authLoading: loading, hasSession: Boolean(session), household: householdState, currentGroup });
 
@@ -61,6 +57,9 @@ function Guard() {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
         <ErrorState message={toHebrewError(household.error)} onRetry={() => household.refetch()} />
+        <View style={{ padding: 24 }}>
+          <Button title="התנתקות" variant="ghost" onPress={() => signOut()} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -69,9 +68,19 @@ function Guard() {
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({ Heebo_400Regular, Heebo_500Medium, Heebo_700Bold });
-  const [queryClient] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } }),
-  );
+  const [queryClient] = useState(() => {
+    // Errors that mean "you're not in this household anymore" (removed while offline,
+    // missed realtime event) trigger a household refetch so the guard can reroute.
+    const onError = (err: unknown) => {
+      if (shouldResyncHousehold(err)) void client.invalidateQueries({ queryKey: queryKeys.household });
+    };
+    const client: QueryClient = new QueryClient({
+      defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
+      queryCache: new QueryCache({ onError }),
+      mutationCache: new MutationCache({ onError }),
+    });
+    return client;
+  });
 
   if (!fontsLoaded && !fontError) return null;
 

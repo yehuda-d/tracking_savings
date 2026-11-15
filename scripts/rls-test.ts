@@ -143,6 +143,16 @@ async function main() {
     { overErr, exactErr, delOpenErr, bal7 },
   );
 
+  // 7b. Two phones withdrawing at once: exactly one succeeds
+  await tx(10000, 'deposit');
+  const [w1, w2] = await Promise.all([tx(6000, 'withdrawal'), tx(6000, 'withdrawal')]);
+  const { data: bal7b } = await A.client.from('savings_with_balance').select('balance_agorot').eq('id', savingId).single();
+  check(
+    '7b. concurrent withdrawals cannot overdraw',
+    [w1.error, w2.error].filter(Boolean).length === 1 && bal7b?.balance_agorot === 4000,
+    { w1: w1.error, w2: w2.error, bal7b },
+  );
+
   // 8. Date limit: up to UTC today + 1
   const { error: plus1Err } = await tx(100, 'deposit', utcDatePlus(1));
   const { error: plus2Err } = await tx(100, 'deposit', utcDatePlus(2));
@@ -180,6 +190,19 @@ async function main() {
   const { data: cHid } = await C.client.rpc('my_household_id');
   check('11. removed member sees nothing', !removeErr && cAfter?.length === 0 && cHid === null, { removeErr, cAfter, cHid });
 
+  // 11b. Removed member cannot probe the balance through error messages
+  const { error: probeSmall } = await C.client
+    .from('transactions')
+    .insert({ saving_id: savingId, kind: 'withdrawal', amount_agorot: 1, created_by: C.id });
+  const { error: probeHuge } = await C.client
+    .from('transactions')
+    .insert({ saving_id: savingId, kind: 'withdrawal', amount_agorot: 99999999999, created_by: C.id });
+  check(
+    '11b. outsider withdrawals fail identically (no balance oracle)',
+    !!probeSmall && !!probeHuge && errMsg(probeSmall) === errMsg(probeHuge) && !errMsg(probeHuge).includes('INSUFFICIENT_BALANCE'),
+    { probeSmall, probeHuge },
+  );
+
   // 12. Profiles visible only within household
   const { data: cSeesA } = await C.client.from('profiles').select('id').eq('id', A.id);
   const { data: aSeesSelf } = await A.client.from('profiles').select('display_name').eq('id', A.id).single();
@@ -188,10 +211,16 @@ async function main() {
     aSeesSelf,
   });
 
-  // 13. Last member leaving deletes the household
-  const { error: leaveErr } = await A.client.rpc('leave_household');
+  // 13. Last member must confirm; then leaving deletes the household
+  const { error: unconfirmedErr } = await A.client.rpc('leave_household');
+  const { data: hAStill } = await admin.from('households').select('id').eq('id', hA.id);
+  const { error: leaveErr } = await A.client.rpc('leave_household', { p_confirm_delete: true });
   const { data: hAGone } = await admin.from('households').select('id').eq('id', hA.id);
-  check('13. last member leaving deletes household', !leaveErr && hAGone?.length === 0, { leaveErr, hAGone });
+  check(
+    '13. last member needs confirmation, then household is deleted',
+    errMsg(unconfirmedErr).includes('LAST_MEMBER') && hAStill?.length === 1 && !leaveErr && hAGone?.length === 0,
+    { unconfirmedErr, hAStill, leaveErr, hAGone },
+  );
 }
 
 async function cleanup() {

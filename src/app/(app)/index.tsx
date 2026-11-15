@@ -39,7 +39,8 @@ export default function Home() {
 
   let body;
   if (savings.isPending) body = <LoadingState />;
-  else if (savings.isError) body = <ErrorState message={toHebrewError(savings.error)} onRetry={() => savings.refetch()} />;
+  else if (savings.isError && !savings.data)
+    body = <ErrorState message={toHebrewError(savings.error)} onRetry={() => savings.refetch()} />;
   else
     body = (
       <FlatList
@@ -47,7 +48,10 @@ export default function Home() {
         keyExtractor={(s) => s.id}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={savings.isRefetching} onRefresh={() => void savings.refetch()} tintColor={colors.primary} />
+          <RefreshControl refreshing={savings.isRefetching} onRefresh={() => {
+              void savings.refetch();
+              void household.refetch();
+            }} tintColor={colors.primary} />
         }
         ListHeaderComponent={<TotalCard total={total} count={list.length} />}
         ListEmptyComponent={

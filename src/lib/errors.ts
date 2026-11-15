@@ -12,6 +12,7 @@ const MESSAGES: [fragment: string, hebrew: string][] = [
   ['NOT_IN_HOUSEHOLD', 'אינך חבר במשק בית'],
   ['NOT_AUTHENTICATED', 'צריך להתחבר מחדש'],
   ['NOT_FOUND', 'הפריט לא נמצא. ייתכן שנמחק'],
+  ['LAST_MEMBER', 'אתה החבר האחרון. עזיבה תמחק את משק הבית'],
   ['Invalid login credentials', 'אימייל או סיסמה שגויים'],
   ['User already registered', 'כבר קיים משתמש עם האימייל הזה'],
   ['Password should be at least', 'הסיסמה צריכה להיות לפחות 6 תווים'],
@@ -24,10 +25,19 @@ const MESSAGES: [fragment: string, hebrew: string][] = [
   ['fetch failed', NETWORK],
 ];
 
+function messageOf(err: unknown): string {
+  return typeof err === 'object' && err !== null && 'message' in err && typeof err.message === 'string' ? err.message : '';
+}
+
+/** True when an error means our idea of the household is stale (e.g. we were removed). */
+export function shouldResyncHousehold(err: unknown): boolean {
+  const message = messageOf(err);
+  return message.includes('NOT_IN_HOUSEHOLD') || message.includes('row-level security');
+}
+
 /** Turns any Supabase / Postgres / network error into a friendly Hebrew sentence. */
 export function toHebrewError(err: unknown): string {
-  const message =
-    typeof err === 'object' && err !== null && 'message' in err && typeof err.message === 'string' ? err.message : '';
+  const message = messageOf(err);
   const hit = MESSAGES.find(([fragment]) => message.includes(fragment));
   return hit ? hit[1] : GENERIC;
 }

@@ -28,17 +28,34 @@ const isoToDate = (iso: string) => {
   return new Date(y, m - 1, d);
 };
 
-export function TransactionSheet({ visible, ...rest }: TransactionSheetProps) {
+export function TransactionSheet({ visible, onClose, ...rest }: TransactionSheetProps) {
+  const add = useAddTransaction();
+  const { reset } = add;
+  // Closing (and Android back) is blocked while a request is in flight, so a hanging
+  // deposit can't be followed by a second one. Mutation state is cleared on close.
+  const done = () => {
+    reset();
+    onClose();
+  };
+  const close = () => {
+    if (add.isPending) return;
+    done();
+  };
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={rest.onClose}>
-      {/* Mounted only while open, so every opening starts with a clean form and mutation state. */}
-      {visible ? <SheetForm {...rest} /> : null}
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
+      {/* Form mounted only while open, so every opening starts clean. */}
+      {visible ? <SheetForm {...rest} add={add} onClose={close} onDone={done} /> : null}
     </Modal>
   );
 }
 
-function SheetForm({ savingId, kind, balanceAgorot, onClose }: Omit<TransactionSheetProps, 'visible'>) {
-  const add = useAddTransaction();
+type SheetFormProps = Omit<TransactionSheetProps, 'visible'> & {
+  add: ReturnType<typeof useAddTransaction>;
+  /** Closes after a successful save (no pending guard: the closure still sees isPending). */
+  onDone: () => void;
+};
+
+function SheetForm({ savingId, kind, balanceAgorot, onClose, onDone, add }: SheetFormProps) {
   const [amount, setAmount] = useState('');
   const [occurredOn, setOccurredOn] = useState(todayLocalISO());
   const [note, setNote] = useState('');
@@ -64,7 +81,7 @@ function SheetForm({ savingId, kind, balanceAgorot, onClose }: Omit<TransactionS
         occurredOn: result.value.occurredOn,
         note: note.trim() || null,
       },
-      { onSuccess: onClose },
+      { onSuccess: onDone },
     );
   }
 
@@ -114,7 +131,7 @@ function SheetForm({ savingId, kind, balanceAgorot, onClose }: Omit<TransactionS
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <Pressable style={styles.backdrop} onPress={add.isPending ? undefined : onClose} accessibilityLabel="סגירה" />
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="סגירה" />
       <View style={styles.sheet}>
         <View style={styles.handle} />
         <View style={styles.titleRow}>

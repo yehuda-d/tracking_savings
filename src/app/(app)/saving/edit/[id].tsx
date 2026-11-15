@@ -15,7 +15,7 @@ export default function EditSaving() {
 
   let body;
   if (saving.isPending) body = <LoadingState />;
-  else if (saving.isError) body = <ErrorState message={toHebrewError(saving.error)} onRetry={() => saving.refetch()} />;
+  else if (saving.isError && saving.data === undefined) body = <ErrorState message={toHebrewError(saving.error)} onRetry={() => saving.refetch()} />;
   else if (!saving.data) body = <EmptyState icon="file-question-outline" title="החיסכון לא נמצא" subtitle="ייתכן שנמחק" />;
   else
     body = (

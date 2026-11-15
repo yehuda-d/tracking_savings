@@ -1,4 +1,4 @@
-import { toHebrewError } from '../errors';
+import { shouldResyncHousehold, toHebrewError } from '../errors';
 
 describe('toHebrewError', () => {
   it.each([
@@ -9,6 +9,7 @@ describe('toHebrewError', () => {
     ['CANNOT_REMOVE_SELF', 'אי אפשר להסיר את עצמך. אפשר לעזוב את משק הבית בהגדרות'],
     ['INVALID_DATE', 'תאריך לא תקין'],
     ['NOT_FOUND', 'הפריט לא נמצא. ייתכן שנמחק'],
+    ['LAST_MEMBER', 'אתה החבר האחרון. עזיבה תמחק את משק הבית'],
     ['NOT_IN_HOUSEHOLD', 'אינך חבר במשק בית'],
     ['Invalid login credentials', 'אימייל או סיסמה שגויים'],
     ['User already registered', 'כבר קיים משתמש עם האימייל הזה'],
@@ -30,5 +31,17 @@ describe('toHebrewError', () => {
   it('falls back to a generic message', () => {
     expect(toHebrewError(new Error('boom'))).toBe('משהו השתבש. נסה שוב');
     expect(toHebrewError(undefined)).toBe('משהו השתבש. נסה שוב');
+  });
+});
+
+describe('shouldResyncHousehold', () => {
+  it.each([
+    [{ message: 'NOT_IN_HOUSEHOLD' }, true],
+    [{ message: 'new row violates row-level security policy for table "transactions"' }, true],
+    [{ message: 'INSUFFICIENT_BALANCE' }, false],
+    [new TypeError('Network request failed'), false],
+    [undefined, false],
+  ])('%p → %p', (err, expected) => {
+    expect(shouldResyncHousehold(err)).toBe(expected);
   });
 });

@@ -44,7 +44,7 @@ export default function SavingDetail() {
       </Screen>
     );
   }
-  if (saving.isError) {
+  if (saving.isError && saving.data === undefined) {
     return (
       <Screen onBack={goHome}>
         <ErrorState message={toHebrewError(saving.error)} onRetry={() => saving.refetch()} />
@@ -145,7 +145,7 @@ export default function SavingDetail() {
 
       {transactions.isPending ? (
         <LoadingState />
-      ) : transactions.isError ? (
+      ) : transactions.isError && !transactions.data ? (
         <ErrorState message={toHebrewError(transactions.error)} onRetry={() => transactions.refetch()} />
       ) : (
         <Card style={styles.historyCard}>

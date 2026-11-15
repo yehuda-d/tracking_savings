@@ -1,4 +1,4 @@
-import { resolveRoute, type RouteState } from '../routing';
+import { householdStateOf, resolveRoute, type RouteState } from '../routing';
 
 const s = (over: Partial<RouteState>): RouteState => ({
   authLoading: false,
@@ -40,5 +40,24 @@ describe('resolveRoute', () => {
   });
   it('stays put on household error so the screen can show retry', () => {
     expect(resolveRoute(s({ household: 'error', currentGroup: 'auth' }))).toBeNull();
+  });
+});
+
+describe('householdStateOf', () => {
+  it('is loading while the first fetch is pending', () => {
+    expect(householdStateOf({ isPending: true, isError: false, data: undefined })).toBe('loading');
+  });
+  it('is error only when nothing was ever loaded', () => {
+    expect(householdStateOf({ isPending: false, isError: true, data: undefined })).toBe('error');
+  });
+  it('keeps the cached household when a background refetch fails', () => {
+    expect(householdStateOf({ isPending: false, isError: true, data: { id: 'h' } })).toBe('some');
+  });
+  it('keeps "none" when a background refetch fails after null', () => {
+    expect(householdStateOf({ isPending: false, isError: true, data: null })).toBe('none');
+  });
+  it('maps data to some / none', () => {
+    expect(householdStateOf({ isPending: false, isError: false, data: { id: 'h' } })).toBe('some');
+    expect(householdStateOf({ isPending: false, isError: false, data: null })).toBe('none');
   });
 });
