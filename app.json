@@ -8,7 +8,10 @@
     "scheme": "trackingsavings",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "ExpoLocalization_forcesRTL": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -49,7 +52,16 @@
     },
     "extra": {
       "supportsRTL": true,
-      "forcesRTL": true
-    }
+      "forcesRTL": true,
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "9d7b1a49-029e-4361-87cb-bd30537689b8"
+      }
+    },
+    "owner": "yehudad"
   }
 }
