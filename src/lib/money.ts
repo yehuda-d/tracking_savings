@@ -44,10 +44,14 @@ export function formatAgorot(agorot: number): string {
   return `${sign}${groupThousands(String(shekels))}${fraction} ₪`;
 }
 
-/** Deposits get "+", withdrawals get "−" (U+2212), opening is unsigned. */
+/** Kinds that reduce the balance. Must match guard_balance in the database. */
+export function isNegativeKind(kind: TransactionKind): boolean {
+  return kind === 'withdrawal' || kind === 'loss';
+}
+
+/** Deposits/gains get "+", withdrawals/losses get "−" (U+2212), opening is unsigned. */
 export function formatSignedAgorot(agorot: number, kind: TransactionKind): string {
   const base = formatAgorot(Math.abs(agorot));
-  if (kind === 'deposit') return `+${base}`;
-  if (kind === 'withdrawal') return `−${base}`;
-  return base;
+  if (kind === 'opening') return base;
+  return isNegativeKind(kind) ? `−${base}` : `+${base}`;
 }

@@ -11,6 +11,17 @@ export interface SavingFormValues {
   notes?: string;
   /** Present only when creating a saving. Empty string means zero. */
   openingInput?: string;
+  /** Optional goal amount; empty or missing means no goal. */
+  goalInput?: string;
+  /** Optional goal date YYYY-MM-DD; only allowed with a goal. */
+  goalDateInput?: string;
+}
+
+/** "", "0", "0.00" (with or without ₪) mean zero; otherwise the normal amount rules apply. */
+function parseZeroOrAmount(input: string): { ok: true; agorot: number } | { ok: false; error: string } {
+  const raw = input.replace(/₪/g, '').trim();
+  if (raw === '' || /^0+(\.0{1,2})?$/.test(raw)) return { ok: true, agorot: 0 };
+  return parseAmountInput(raw);
 }
 
 export function validateSavingForm(v: SavingFormValues): ValidationResult<SavingInput & { openingAgorot?: number }> {
@@ -25,14 +36,24 @@ export function validateSavingForm(v: SavingFormValues): ValidationResult<Saving
 
   let openingAgorot: number | undefined;
   if (v.openingInput !== undefined) {
-    const raw = v.openingInput.replace(/₪/g, '').trim();
-    if (raw === '' || /^0+(\.0{1,2})?$/.test(raw)) {
-      openingAgorot = 0;
-    } else {
-      const parsed = parseAmountInput(raw);
-      if (parsed.ok) openingAgorot = parsed.agorot;
-      else errors.opening = parsed.error;
-    }
+    const parsed = parseZeroOrAmount(v.openingInput);
+    if (parsed.ok) openingAgorot = parsed.agorot;
+    else errors.opening = parsed.error;
+  }
+
+  let goalAgorot: number | null = null;
+  const goalRaw = v.goalInput?.trim() ?? '';
+  if (goalRaw !== '') {
+    const parsed = parseAmountInput(goalRaw);
+    if (parsed.ok) goalAgorot = parsed.agorot;
+    else errors.goal = parsed.error;
+  }
+  const goalDateRaw = v.goalDateInput?.trim() ?? '';
+  let goalDate: string | null = null;
+  if (goalDateRaw !== '') {
+    if (goalRaw === '') errors.goalDate = 'אפשר לבחור תאריך רק אם יש סכום יעד';
+    else if (!isValidISODate(goalDateRaw)) errors.goalDate = 'תאריך לא תקין';
+    else goalDate = goalDateRaw;
   }
 
   if (Object.keys(errors).length > 0 || !v.locationType) return { ok: false, errors };
@@ -42,6 +63,8 @@ export function validateSavingForm(v: SavingFormValues): ValidationResult<Saving
     location_type: v.locationType,
     institution,
     notes,
+    goal_agorot: goalAgorot,
+    goal_date: goalDate,
   };
   if (openingAgorot !== undefined) value.openingAgorot = openingAgorot;
   return { ok: true, value };
@@ -69,4 +92,33 @@ export function validateTransactionForm(
 
   if (Object.keys(errors).length > 0 || !parsed.ok) return { ok: false, errors };
   return { ok: true, value: { amountAgorot: parsed.agorot, occurredOn: v.occurredOn } };
+}
+
+export interface RevaluationFormValues {
+  /** What the saving is worth today, in shekels. May be zero. */
+  valueInput: string;
+  occurredOn: string;
+  balanceAgorot: number;
+  today: string;
+}
+
+/** Turns "it's worth X today" into a gain or loss transaction for the difference. */
+export function validateRevaluationForm(
+  v: RevaluationFormValues,
+): ValidationResult<{ kind: 'gain' | 'loss'; amountAgorot: number; occurredOn: string }> {
+  const errors: Record<string, string> = {};
+  const parsed =
+    v.valueInput.trim() === '' ? { ok: false as const, error: 'נא להזין סכום' } : parseZeroOrAmount(v.valueInput);
+  if (!parsed.ok) errors.value = parsed.error;
+  else if (parsed.agorot === v.balanceAgorot) errors.value = 'השווי זהה ליתרה הנוכחית';
+
+  if (!isValidISODate(v.occurredOn)) errors.occurredOn = 'תאריך לא תקין';
+  else if (v.occurredOn > v.today) errors.occurredOn = 'אי אפשר לבחור תאריך עתידי';
+
+  if (Object.keys(errors).length > 0 || !parsed.ok) return { ok: false, errors };
+  const diff = parsed.agorot - v.balanceAgorot;
+  return {
+    ok: true,
+    value: { kind: diff > 0 ? 'gain' : 'loss', amountAgorot: Math.abs(diff), occurredOn: v.occurredOn },
+  };
 }

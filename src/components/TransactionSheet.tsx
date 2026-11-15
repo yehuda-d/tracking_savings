@@ -1,32 +1,40 @@
-import DateTimePicker from '@react-native-community/datetimepicker';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { useAddTransaction } from '@/data/transactions';
-import { formatDateHe, todayLocalISO } from '@/lib/dates';
+import { todayLocalISO } from '@/lib/dates';
 import { toHebrewError } from '@/lib/errors';
-import { formatAgorot } from '@/lib/money';
-import { validateTransactionForm } from '@/lib/validation';
+import { formatAgorot, formatSignedAgorot } from '@/lib/money';
+import { validateRevaluationForm, validateTransactionForm } from '@/lib/validation';
 import { row } from '@/theme/rtl';
 import { colors, radius, space } from '@/theme/tokens';
 
 import { AppText } from './AppText';
+import { DateField } from './DateField';
 import { Button } from './Button';
 import { TextField } from './TextField';
 
 export interface TransactionSheetProps {
   visible: boolean;
   savingId: string;
-  kind: 'deposit' | 'withdrawal';
+  /** 'revalue' asks for today's value and records the difference as a gain or loss. */
+  kind: 'deposit' | 'withdrawal' | 'revalue';
   balanceAgorot: number;
   onClose: () => void;
 }
 
-const isoToDate = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
+const COPY = {
+  deposit: { title: 'הוספת כסף', amountLabel: 'סכום (₪)', submit: 'הוסף', icon: 'arrow-down-bold', tint: 'positive' },
+  withdrawal: { title: 'משיכה', amountLabel: 'סכום (₪)', submit: 'משוך', icon: 'arrow-up-bold', tint: 'negative' },
+  revalue: {
+    title: 'עדכון שווי',
+    amountLabel: 'כמה שווה היום? (₪)',
+    submit: 'עדכון',
+    icon: 'chart-line',
+    tint: 'primary',
+  },
+} as const;
 
 export function TransactionSheet({ visible, onClose, ...rest }: TransactionSheetProps) {
   const add = useAddTransaction();
@@ -60,74 +68,40 @@ function SheetForm({ savingId, kind, balanceAgorot, onClose, onDone, add }: Shee
   const [occurredOn, setOccurredOn] = useState(todayLocalISO());
   const [note, setNote] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const copy = COPY[kind];
+  const today = todayLocalISO();
 
-  const isDeposit = kind === 'deposit';
+  // Live preview for revaluation: what difference will be recorded.
+  const preview =
+    kind === 'revalue' && amount.trim() !== ''
+      ? validateRevaluationForm({ valueInput: amount, occurredOn: today, balanceAgorot, today })
+      : null;
 
   function submit() {
     if (add.isPending) return;
-    const today = todayLocalISO();
-    const result = validateTransactionForm({ kind, amountInput: amount, occurredOn, balanceAgorot, today });
-    if (!result.ok) {
-      setErrors(result.errors);
-      return;
+    let tx: { kind: 'deposit' | 'withdrawal' | 'gain' | 'loss'; amountAgorot: number; occurredOn: string };
+    if (kind === 'revalue') {
+      const r = validateRevaluationForm({ valueInput: amount, occurredOn, balanceAgorot, today });
+      if (!r.ok) {
+        const { value, ...rest } = r.errors;
+        setErrors(value ? { ...rest, amount: value } : rest);
+        return;
+      }
+      tx = r.value;
+    } else {
+      const r = validateTransactionForm({ kind, amountInput: amount, occurredOn, balanceAgorot, today });
+      if (!r.ok) {
+        setErrors(r.errors);
+        return;
+      }
+      tx = { kind, ...r.value };
     }
     setErrors({});
-    add.mutate(
-      {
-        savingId,
-        kind,
-        amountAgorot: result.value.amountAgorot,
-        occurredOn: result.value.occurredOn,
-        note: note.trim() || null,
-      },
-      { onSuccess: onDone },
-    );
+    add.mutate({ savingId, ...tx, note: note.trim() || null }, { onSuccess: onDone });
   }
 
-  const dateField =
-    Platform.OS === 'web' ? (
-      <TextField
-        label="תאריך"
-        value={occurredOn}
-        onChangeText={setOccurredOn}
-        placeholder="YYYY-MM-DD"
-        error={errors.occurredOn}
-      />
-    ) : (
-      <View style={styles.group}>
-        <AppText size="sm" weight="medium" color={colors.textMuted}>
-          תאריך
-        </AppText>
-        <Pressable
-          onPress={() => setPickerOpen(true)}
-          accessibilityRole="button"
-          accessibilityLabel={`תאריך: ${formatDateHe(occurredOn)}`}
-          style={styles.dateButton}
-        >
-          <MaterialCommunityIcons name="calendar-month-outline" size={20} color={colors.primary} />
-          <AppText>
-            {occurredOn === todayLocalISO() ? `היום, ${formatDateHe(occurredOn)}` : formatDateHe(occurredOn)}
-          </AppText>
-        </Pressable>
-        {errors.occurredOn ? (
-          <AppText size="sm" color={colors.negative}>
-            {errors.occurredOn}
-          </AppText>
-        ) : null}
-        {pickerOpen ? (
-          <DateTimePicker
-            value={isoToDate(occurredOn)}
-            mode="date"
-            maximumDate={new Date()}
-            onChange={(event, date) => {
-              setPickerOpen(false);
-              if (event.type === 'set' && date) setOccurredOn(todayLocalISO(date));
-            }}
-          />
-        ) : null}
-      </View>
-    );
+  const tint = colors[copy.tint];
+  const tintSoft = copy.tint === 'negative' ? colors.negativeSoft : colors.primarySoft;
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'web' ? undefined : 'padding'}>
@@ -135,16 +109,12 @@ function SheetForm({ savingId, kind, balanceAgorot, onClose, onDone, add }: Shee
       <View style={styles.sheet}>
         <View style={styles.handle} />
         <View style={styles.titleRow}>
-          <View style={[styles.badge, { backgroundColor: isDeposit ? colors.primarySoft : colors.negativeSoft }]}>
-            <MaterialCommunityIcons
-              name={isDeposit ? 'arrow-down-bold' : 'arrow-up-bold'}
-              size={22}
-              color={isDeposit ? colors.positive : colors.negative}
-            />
+          <View style={[styles.badge, { backgroundColor: tintSoft }]}>
+            <MaterialCommunityIcons name={copy.icon} size={22} color={tint} />
           </View>
           <View style={styles.flex}>
             <AppText size="lg" weight="bold">
-              {isDeposit ? 'הוספת כסף' : 'משיכה'}
+              {copy.title}
             </AppText>
             <AppText size="sm" color={colors.textMuted}>
               {`יתרה נוכחית: ‎${formatAgorot(balanceAgorot)}‎`}
@@ -152,7 +122,7 @@ function SheetForm({ savingId, kind, balanceAgorot, onClose, onDone, add }: Shee
           </View>
         </View>
         <TextField
-          label="סכום (₪)"
+          label={copy.amountLabel}
           value={amount}
           onChangeText={setAmount}
           keyboardType="decimal-pad"
@@ -162,18 +132,29 @@ function SheetForm({ savingId, kind, balanceAgorot, onClose, onDone, add }: Shee
           error={errors.amount}
           onSubmitEditing={submit}
         />
-        {dateField}
+        {preview?.ok ? (
+          <AppText weight="bold" color={preview.value.kind === 'gain' ? colors.positive : colors.negative}>
+            {`${preview.value.kind === 'gain' ? 'רווח של' : 'הפסד של'} ‎${formatSignedAgorot(preview.value.amountAgorot, preview.value.kind)}‎`}
+          </AppText>
+        ) : null}
+        <DateField
+          label="תאריך"
+          value={occurredOn}
+          onChange={setOccurredOn}
+          maximumDate={new Date()}
+          error={errors.occurredOn}
+        />
         <TextField
           label="הערה (לא חובה)"
           value={note}
           onChangeText={setNote}
           maxLength={200}
-          placeholder="למשל: משכורת נובמבר"
+          placeholder={kind === 'revalue' ? 'למשל: לפי דוח רבעוני' : 'למשל: משכורת נובמבר'}
         />
         {add.error ? <AppText color={colors.negative}>{toHebrewError(add.error)}</AppText> : null}
         <Button
-          title={isDeposit ? 'הוסף' : 'משוך'}
-          variant={isDeposit ? 'primary' : 'danger'}
+          title={copy.submit}
+          variant={kind === 'withdrawal' ? 'danger' : 'primary'}
           onPress={submit}
           loading={add.isPending}
         />
@@ -196,16 +177,4 @@ const styles = StyleSheet.create({
   handle: { alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: colors.border },
   titleRow: { flexDirection: row, alignItems: 'center', gap: space(3) },
   badge: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  group: { gap: space(1.5) },
-  dateButton: {
-    flexDirection: row,
-    alignItems: 'center',
-    gap: space(2),
-    minHeight: 52,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    paddingHorizontal: space(4),
-  },
 });

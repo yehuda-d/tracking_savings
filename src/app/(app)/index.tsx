@@ -7,6 +7,7 @@ import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
+import { GoalLine } from '@/components/GoalProgress';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { useMyHousehold } from '@/data/household';
 import { useSavings } from '@/data/savings';
@@ -48,10 +49,14 @@ export default function Home() {
         keyExtractor={(s) => s.id}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={savings.isRefetching} onRefresh={() => {
+          <RefreshControl
+            refreshing={savings.isRefetching}
+            onRefresh={() => {
               void savings.refetch();
               void household.refetch();
-            }} tintColor={colors.primary} />
+            }}
+            tintColor={colors.primary}
+          />
         }
         ListHeaderComponent={<TotalCard total={total} count={list.length} />}
         ListEmptyComponent={
@@ -62,7 +67,10 @@ export default function Home() {
           />
         }
         renderItem={({ item }) => (
-          <SavingCard saving={item} onPress={() => router.push({ pathname: '/saving/[id]', params: { id: item.id } })} />
+          <SavingCard
+            saving={item}
+            onPress={() => router.push({ pathname: '/saving/[id]', params: { id: item.id } })}
+          />
         )}
       />
     );
@@ -116,6 +124,7 @@ function SavingCard({ saving, onPress }: { saving: SavingWithBalance; onPress: (
         </View>
         <AmountText agorot={saving.balance_agorot} size="lg" />
       </View>
+      {saving.goal_agorot ? <GoalLine balanceAgorot={saving.balance_agorot} goalAgorot={saving.goal_agorot} /> : null}
     </Card>
   );
 }

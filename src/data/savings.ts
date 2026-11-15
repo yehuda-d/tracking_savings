@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { todayLocalISO } from '@/lib/dates';
 import { supabase } from '@/lib/supabase';
 import type { SavingInput, SavingWithBalance } from '@/lib/types';
 
@@ -41,6 +42,9 @@ export function useCreateSaving() {
         p_institution: input.institution,
         p_notes: input.notes,
         p_opening_agorot: input.openingAgorot,
+        p_goal_agorot: input.goal_agorot,
+        p_goal_date: input.goal_date,
+        p_opened_on: todayLocalISO(),
       });
       if (error) throw error;
       return data as string;
@@ -60,6 +64,8 @@ export function useUpdateSaving() {
           location_type: input.location_type,
           institution: input.institution,
           notes: input.notes,
+          goal_agorot: input.goal_agorot,
+          goal_date: input.goal_date,
         })
         .eq('id', id)
         .select('id');

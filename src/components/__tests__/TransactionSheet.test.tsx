@@ -15,7 +15,7 @@ beforeEach(() => {
   mockIsPending = false;
 });
 
-async function renderSheet(kind: 'deposit' | 'withdrawal') {
+async function renderSheet(kind: 'deposit' | 'withdrawal' | 'revalue') {
   await render(<TransactionSheet visible savingId="s1" kind={kind} balanceAgorot={50000} onClose={jest.fn()} />);
 }
 
@@ -57,5 +57,28 @@ describe('TransactionSheet', () => {
     expect(view.root!.type).toBe("Modal");
     view.root!.props.onRequestClose();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('revalue mode previews a gain and records the difference', async () => {
+    await renderSheet('revalue');
+    await fireEvent.changeText(screen.getByLabelText('כמה שווה היום? (₪)'), '512.40');
+    expect(screen.getByText(/רווח של/)).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'עדכון' }));
+    expect(mockMutate).toHaveBeenCalledTimes(1);
+    expect(mockMutate.mock.calls[0][0]).toMatchObject({ savingId: 's1', kind: 'gain', amountAgorot: 1240 });
+  });
+
+  it('revalue mode previews a loss', async () => {
+    await renderSheet('revalue');
+    await fireEvent.changeText(screen.getByLabelText('כמה שווה היום? (₪)'), '470');
+    expect(screen.getByText(/הפסד של/)).toBeTruthy();
+  });
+
+  it('revalue mode refuses the same value', async () => {
+    await renderSheet('revalue');
+    await fireEvent.changeText(screen.getByLabelText('כמה שווה היום? (₪)'), '500');
+    await fireEvent.press(screen.getByRole('button', { name: 'עדכון' }));
+    expect(screen.getByText('השווי זהה ליתרה הנוכחית')).toBeTruthy();
+    expect(mockMutate).not.toHaveBeenCalled();
   });
 });

@@ -10,8 +10,16 @@ export interface AppTextProps extends TextProps {
   align?: 'start' | 'center' | 'end';
 }
 
-export function AppText({ weight = 'regular', size = 'md', color = colors.text, align = 'start', style, ...rest }: AppTextProps) {
-  const textAlign = align === 'center' ? 'center' : align === 'start' ? textStart : textStart === 'right' ? 'left' : 'right';
+export function AppText({
+  weight = 'regular',
+  size = 'md',
+  color = colors.text,
+  align = 'start',
+  style,
+  ...rest
+}: AppTextProps) {
+  const textAlign =
+    align === 'center' ? 'center' : align === 'start' ? textStart : textStart === 'right' ? 'left' : 'right';
   return (
     <Text
       {...rest}

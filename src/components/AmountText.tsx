@@ -1,4 +1,4 @@
-import { formatAgorot, formatSignedAgorot } from '@/lib/money';
+import { formatAgorot, formatSignedAgorot, isNegativeKind } from '@/lib/money';
 import type { TransactionKind } from '@/lib/types';
 import { colors } from '@/theme/tokens';
 
@@ -16,7 +16,7 @@ export function AmountText({ agorot, size = 'md', kind, color, weight = 'bold', 
   // LRM marks keep sign, digits and ₪ in one left-to-right run inside Hebrew text ("−500 ₪", not "500−").
   const text = `‎${kind ? formatSignedAgorot(agorot, kind) : formatAgorot(agorot)}‎`;
   const tint =
-    color ?? (kind === 'deposit' ? colors.positive : kind === 'withdrawal' ? colors.negative : colors.text);
+    color ?? (!kind || kind === 'opening' ? colors.text : isNegativeKind(kind) ? colors.negative : colors.positive);
   return (
     <AppText {...rest} weight={weight} size={sizes[size]} color={tint}>
       {text}

@@ -26,7 +26,15 @@ const palette: Record<Variant, { bg: string; fg: string; border: string }> = {
   ghost: { bg: 'transparent', fg: colors.primary, border: 'transparent' },
 };
 
-export function Button({ title, onPress, variant = 'primary', loading = false, disabled = false, icon, compact }: ButtonProps) {
+export function Button({
+  title,
+  onPress,
+  variant = 'primary',
+  loading = false,
+  disabled = false,
+  icon,
+  compact,
+}: ButtonProps) {
   const inactive = loading || disabled;
   const p = palette[variant];
   return (

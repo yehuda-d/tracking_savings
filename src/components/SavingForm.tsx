@@ -5,11 +5,12 @@ import { LOCATION_TYPES, locationIcon, locationLabel } from '@/lib/locationTypes
 import type { LocationType, SavingInput, SavingWithBalance } from '@/lib/types';
 import { validateSavingForm } from '@/lib/validation';
 import { row } from '@/theme/rtl';
-import { colors, space } from '@/theme/tokens';
+import { colors, radius, space } from '@/theme/tokens';
 
 import { AppText } from './AppText';
 import { Button } from './Button';
 import { Chip } from './Chip';
+import { DateField } from './DateField';
 import { TextField } from './TextField';
 
 export type SavingFormValue = SavingInput & { openingAgorot?: number };
@@ -28,6 +29,9 @@ export function SavingForm({ mode, initial, submitting, serverError, onSubmit }:
   const [institution, setInstitution] = useState(initial?.institution ?? '');
   const [opening, setOpening] = useState('');
   const [notes, setNotes] = useState(initial?.notes ?? '');
+  const [hasGoal, setHasGoal] = useState(initial?.goal_agorot != null);
+  const [goal, setGoal] = useState(initial?.goal_agorot != null ? String(initial.goal_agorot / 100) : '');
+  const [goalDate, setGoalDate] = useState(initial?.goal_date ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function submit() {
@@ -36,6 +40,8 @@ export function SavingForm({ mode, initial, submitting, serverError, onSubmit }:
       locationType,
       institution,
       notes,
+      goalInput: hasGoal ? goal : '',
+      goalDateInput: hasGoal ? goalDate : '',
       ...(mode === 'create' ? { openingInput: opening } : {}),
     });
     if (!result.ok) {
@@ -109,6 +115,48 @@ export function SavingForm({ mode, initial, submitting, serverError, onSubmit }:
         placeholder="למשל: ריבית קבועה עד 2027"
       />
 
+      {hasGoal ? (
+        <View style={styles.goalBox}>
+          <View style={styles.goalHeader}>
+            <AppText weight="bold">יעד</AppText>
+            <Button
+              title="הסרת יעד"
+              variant="ghost"
+              compact
+              onPress={() => {
+                setHasGoal(false);
+                setGoal('');
+                setGoalDate('');
+              }}
+            />
+          </View>
+          <TextField
+            label="סכום היעד (₪)"
+            value={goal}
+            onChangeText={setGoal}
+            keyboardType="decimal-pad"
+            placeholder="למשל: 400,000"
+            error={errors.goal}
+          />
+          <DateField
+            label="עד מתי? (לא חובה)"
+            value={goalDate}
+            onChange={setGoalDate}
+            minimumDate={new Date()}
+            placeholder="בלי תאריך"
+            error={errors.goalDate}
+          />
+          {goalDate ? <Button title="בלי תאריך" variant="ghost" compact onPress={() => setGoalDate('')} /> : null}
+        </View>
+      ) : (
+        <Button
+          title="הוספת יעד (לא חובה)"
+          icon="flag-checkered"
+          variant="secondary"
+          onPress={() => setHasGoal(true)}
+        />
+      )}
+
       {serverError ? <AppText color={colors.negative}>{serverError}</AppText> : null}
 
       <Button title={mode === 'create' ? 'שמירת החיסכון' : 'שמירת שינויים'} onPress={submit} loading={submitting} />
@@ -120,4 +168,13 @@ const styles = StyleSheet.create({
   form: { gap: space(5) },
   group: { gap: space(2) },
   chips: { flexDirection: row, flexWrap: 'wrap', gap: space(2) },
+  goalBox: {
+    gap: space(3),
+    padding: space(4),
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  goalHeader: { flexDirection: row, justifyContent: 'space-between', alignItems: 'center' },
 });

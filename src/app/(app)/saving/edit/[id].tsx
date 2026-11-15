@@ -25,8 +25,11 @@ export default function EditSaving() {
         initial={saving.data}
         submitting={update.isPending}
         serverError={update.error ? toHebrewError(update.error) : null}
-        onSubmit={({ purpose, location_type, institution, notes }) =>
-          update.mutate({ id, purpose, location_type, institution, notes }, { onSuccess: () => router.back() })
+        onSubmit={({ purpose, location_type, institution, notes, goal_agorot, goal_date }) =>
+          update.mutate(
+            { id, purpose, location_type, institution, notes, goal_agorot, goal_date },
+            { onSuccess: () => router.back() },
+          )
         }
       />
     );

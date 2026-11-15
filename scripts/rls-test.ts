@@ -175,6 +175,43 @@ async function main() {
     s2Tx,
   });
 
+  // 9b. Revaluation: gain/loss move the balance and gains; losses can't overdraw
+  const { data: s3 } = await A.client.rpc('create_saving', {
+    p_purpose: 'קרן',
+    p_location_type: 'money_market_fund',
+    p_institution: 'מגדל',
+    p_notes: null,
+    p_opening_agorot: 50000,
+    p_goal_agorot: 100000,
+    p_goal_date: utcDatePlus(365),
+  });
+  const ins = (kind: string, amount: number) =>
+    A.client.from('transactions').insert({ saving_id: s3, kind, amount_agorot: amount, created_by: A.id }).select('id').single();
+  const { data: g1, error: gErr } = await ins('gain', 10000);
+  const { error: lErr } = await ins('loss', 4000);
+  const { data: v9b } = await A.client
+    .from('savings_with_balance')
+    .select('balance_agorot, gains_agorot, goal_agorot, goal_date')
+    .eq('id', s3)
+    .single();
+  const { error: bigLossErr } = await ins('loss', 1000000);
+  check(
+    '9b. gain/loss update balance and gains; oversized loss rejected; goal saved',
+    !gErr && !lErr && v9b?.balance_agorot === 56000 && v9b?.gains_agorot === 6000 &&
+      v9b?.goal_agorot === 100000 && v9b?.goal_date === utcDatePlus(365) &&
+      errMsg(bigLossErr).includes('INSUFFICIENT_BALANCE'),
+    { gErr, lErr, v9b, bigLossErr },
+  );
+
+  // 9c. Deleting a gain that would go negative is rejected
+  await ins('loss', 56000); // balance now 0
+  const { error: delGainErr } = await A.client.from('transactions').delete().eq('id', g1?.id);
+  check('9c. deleting a gain that would overdraw is rejected', errMsg(delGainErr).includes('INSUFFICIENT_BALANCE'), delGainErr);
+
+  // 9d. Goal date without amount is rejected
+  const { error: goalDateErr } = await A.client.from('savings').update({ goal_agorot: null, goal_date: utcDatePlus(30) }).eq('id', s3);
+  check('9d. goal date without goal amount is rejected', !!goalDateErr, goalDateErr);
+
   // 10. Non-owner cannot manage
   const { error: regenErr } = await C.client.rpc('regenerate_invite_code');
   const { error: rmErr } = await C.client.rpc('remove_member', { p_user_id: A.id });

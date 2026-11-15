@@ -1,4 +1,4 @@
-import { formatAgorot, formatSignedAgorot, MAX_AGOROT, parseAmountInput } from '../money';
+import { formatAgorot, formatSignedAgorot, isNegativeKind, MAX_AGOROT, parseAmountInput } from '../money';
 
 describe('parseAmountInput', () => {
   it.each([
@@ -54,5 +54,19 @@ describe('formatSignedAgorot', () => {
   });
   it('leaves opening unsigned', () => {
     expect(formatSignedAgorot(50000, 'opening')).toBe('500 ₪');
+  });
+});
+
+describe('gain / loss', () => {
+  it('formats a gain with + and a loss with a real minus', () => {
+    expect(formatSignedAgorot(124000, 'gain')).toBe('+1,240 ₪');
+    expect(formatSignedAgorot(30000, 'loss')).toBe('\u2212300 ₪');
+  });
+  it('treats withdrawal and loss as negative kinds only', () => {
+    expect(isNegativeKind('withdrawal')).toBe(true);
+    expect(isNegativeKind('loss')).toBe(true);
+    expect(isNegativeKind('deposit')).toBe(false);
+    expect(isNegativeKind('gain')).toBe(false);
+    expect(isNegativeKind('opening')).toBe(false);
   });
 });

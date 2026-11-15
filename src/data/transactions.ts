@@ -24,7 +24,7 @@ export function useTransactions(savingId: string) {
 
 export interface AddTransactionInput {
   savingId: string;
-  kind: 'deposit' | 'withdrawal';
+  kind: 'deposit' | 'withdrawal' | 'gain' | 'loss';
   amountAgorot: number;
   occurredOn: string;
   note: string | null;

@@ -26,7 +26,9 @@ const MESSAGES: [fragment: string, hebrew: string][] = [
 ];
 
 function messageOf(err: unknown): string {
-  return typeof err === 'object' && err !== null && 'message' in err && typeof err.message === 'string' ? err.message : '';
+  return typeof err === 'object' && err !== null && 'message' in err && typeof err.message === 'string'
+    ? err.message
+    : '';
 }
 
 /** True when an error means our idea of the household is stale (e.g. we were removed). */

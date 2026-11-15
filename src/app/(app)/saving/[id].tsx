@@ -9,6 +9,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Screen } from '@/components/Screen';
+import { GoalDetails } from '@/components/GoalProgress';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { TransactionSheet } from '@/components/TransactionSheet';
 import { useDeleteSaving, useSaving } from '@/data/savings';
@@ -16,7 +17,7 @@ import { useDeleteTransaction, useTransactions } from '@/data/transactions';
 import { formatDateHe } from '@/lib/dates';
 import { toHebrewError } from '@/lib/errors';
 import { locationIcon, locationLabel } from '@/lib/locationTypes';
-import { formatSignedAgorot } from '@/lib/money';
+import { formatSignedAgorot, isNegativeKind } from '@/lib/money';
 import type { Transaction } from '@/lib/types';
 import { row } from '@/theme/rtl';
 import { colors, radius, space } from '@/theme/tokens';
@@ -31,7 +32,7 @@ export default function SavingDetail() {
   const deleteSaving = useDeleteSaving();
   const deleteTx = useDeleteTransaction();
 
-  const [sheet, setSheet] = useState<'deposit' | 'withdrawal' | null>(null);
+  const [sheet, setSheet] = useState<'deposit' | 'withdrawal' | 'revalue' | null>(null);
   const [confirmDeleteSaving, setConfirmDeleteSaving] = useState(false);
   const [txToDelete, setTxToDelete] = useState<Transaction | null>(null);
 
@@ -65,6 +66,7 @@ export default function SavingDetail() {
   }
 
   const s = saving.data;
+  const hasRevaluations = (transactions.data ?? []).some((t) => t.kind === 'gain' || t.kind === 'loss');
 
   const actions = (
     <>
@@ -76,7 +78,12 @@ export default function SavingDetail() {
       >
         <MaterialCommunityIcons name="pencil-outline" size={24} color={colors.text} />
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="מחיקת החיסכון" hitSlop={10} onPress={() => setConfirmDeleteSaving(true)}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="מחיקת החיסכון"
+        hitSlop={10}
+        onPress={() => setConfirmDeleteSaving(true)}
+      >
         <MaterialCommunityIcons name="trash-can-outline" size={24} color={colors.negative} />
       </Pressable>
     </>
@@ -117,7 +124,21 @@ export default function SavingDetail() {
             {s.notes}
           </AppText>
         ) : null}
+        {hasRevaluations ? (
+          <View style={styles.metaRow}>
+            <AppText size="sm" color={colors.textMuted}>
+              רווח מצטבר:
+            </AppText>
+            <AmountText agorot={s.gains_agorot} kind={s.gains_agorot < 0 ? 'loss' : 'gain'} size="sm" />
+          </View>
+        ) : null}
       </Card>
+
+      {s.goal_agorot ? (
+        <Card>
+          <GoalDetails balanceAgorot={s.balance_agorot} goalAgorot={s.goal_agorot} goalDate={s.goal_date} />
+        </Card>
+      ) : null}
 
       <View style={styles.buttons}>
         <View style={styles.flex}>
@@ -133,6 +154,7 @@ export default function SavingDetail() {
           />
         </View>
       </View>
+      <Button title="עדכון שווי" icon="chart-line" variant="ghost" onPress={() => setSheet('revalue')} />
 
       <View style={styles.historyHeader}>
         <AppText size="lg" weight="bold">
@@ -202,8 +224,7 @@ export default function SavingDetail() {
           deleteTx.reset();
         }}
         onConfirm={() =>
-          txToDelete &&
-          deleteTx.mutate({ id: txToDelete.id, savingId: s.id }, { onSuccess: () => setTxToDelete(null) })
+          txToDelete && deleteTx.mutate({ id: txToDelete.id, savingId: s.id }, { onSuccess: () => setTxToDelete(null) })
         }
       />
     </Screen>
@@ -214,11 +235,21 @@ const KIND_LABEL: Record<Transaction['kind'], string> = {
   opening: 'יתרת פתיחה',
   deposit: 'הפקדה',
   withdrawal: 'משיכה',
+  gain: 'עדכון שווי',
+  loss: 'עדכון שווי',
 };
 
 function TransactionRow({ tx, first, onLongPress }: { tx: Transaction; first: boolean; onLongPress: () => void }) {
-  const icon = tx.kind === 'deposit' ? 'arrow-down' : tx.kind === 'withdrawal' ? 'arrow-up' : 'flag-outline';
-  const tint = tx.kind === 'deposit' ? colors.positive : tx.kind === 'withdrawal' ? colors.negative : colors.primary;
+  const icon = (
+    {
+      deposit: 'arrow-down',
+      withdrawal: 'arrow-up',
+      gain: 'trending-up',
+      loss: 'trending-down',
+      opening: 'flag-outline',
+    } as const
+  )[tx.kind];
+  const tint = tx.kind === 'opening' ? colors.primary : isNegativeKind(tx.kind) ? colors.negative : colors.positive;
   return (
     <Pressable
       onLongPress={onLongPress}
