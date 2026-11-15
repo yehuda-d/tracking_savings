@@ -48,3 +48,6 @@ example
 
 # superpowers workspace
 .superpowers/
+
+# local browser-test artifacts
+.playwright-mcp/
