@@ -1,5 +1,4 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 
 import { SavingForm } from '@/components/SavingForm';
 import { Screen } from '@/components/Screen';
@@ -15,8 +14,10 @@ export default function EditSaving() {
 
   let body;
   if (saving.isPending) body = <LoadingState />;
-  else if (saving.isError && saving.data === undefined) body = <ErrorState message={toHebrewError(saving.error)} onRetry={() => saving.refetch()} />;
-  else if (!saving.data) body = <EmptyState icon="file-question-outline" title="החיסכון לא נמצא" subtitle="ייתכן שנמחק" />;
+  else if (saving.isError && saving.data === undefined)
+    body = <ErrorState message={toHebrewError(saving.error)} onRetry={() => saving.refetch()} />;
+  else if (!saving.data)
+    body = <EmptyState icon="file-question-outline" title="החיסכון לא נמצא" subtitle="ייתכן שנמחק" />;
   else
     body = (
       <SavingForm
@@ -31,12 +32,9 @@ export default function EditSaving() {
     );
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Screen title="עריכת חיסכון" onBack={() => router.back()} scroll={Boolean(saving.data)}>
-        {body}
-      </Screen>
-    </KeyboardAvoidingView>
+    <Screen title="עריכת חיסכון" onBack={() => router.back()} scroll={Boolean(saving.data)}>
+      {body}
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({ flex: { flex: 1 } });

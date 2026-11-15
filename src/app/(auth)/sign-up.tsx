@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { AppText } from '@/components/AppText';
@@ -43,47 +43,45 @@ export default function SignUp() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Screen scroll>
-        <AuthHero subtitle="יוצרים חשבון ומתחילים לעקוב" />
-        <TextField label="שם" value={name} onChangeText={setName} autoComplete="name" placeholder="איך לקרוא לך?" />
-        <TextField
-          label="אימייל"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          textContentType="emailAddress"
-        />
-        <TextField
-          label="סיסמה"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete="new-password"
-          textContentType="newPassword"
-          placeholder="לפחות 6 תווים"
-          onSubmitEditing={submit}
-        />
-        {error ? (
-          <AppText color={colors.negative} align="center">
-            {error}
-          </AppText>
-        ) : null}
-        {info ? (
-          <AppText color={colors.primaryDark} align="center">
-            {info}
-          </AppText>
-        ) : null}
-        <Button title="הרשמה" onPress={submit} loading={busy} />
-        <Link href="/sign-in" replace style={styles.link}>
-          <AppText color={colors.primary} weight="medium" align="center">
-            כבר יש לך חשבון? להתחברות
-          </AppText>
-        </Link>
-      </Screen>
-    </KeyboardAvoidingView>
+    <Screen scroll>
+      <AuthHero subtitle="יוצרים חשבון ומתחילים לעקוב" />
+      <TextField label="שם" value={name} onChangeText={setName} autoComplete="name" placeholder="איך לקרוא לך?" />
+      <TextField
+        label="אימייל"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        textContentType="emailAddress"
+      />
+      <TextField
+        label="סיסמה"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        autoComplete="new-password"
+        textContentType="newPassword"
+        placeholder="לפחות 6 תווים"
+        onSubmitEditing={submit}
+      />
+      {error ? (
+        <AppText color={colors.negative} align="center">
+          {error}
+        </AppText>
+      ) : null}
+      {info ? (
+        <AppText color={colors.primaryDark} align="center">
+          {info}
+        </AppText>
+      ) : null}
+      <Button title="הרשמה" onPress={submit} loading={busy} />
+      <Link href="/sign-in" replace style={styles.link}>
+        <AppText color={colors.primary} weight="medium" align="center">
+          כבר יש לך חשבון? להתחברות
+        </AppText>
+      </Link>
+    </Screen>
   );
 }
 

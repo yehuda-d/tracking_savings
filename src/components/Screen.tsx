@@ -1,6 +1,14 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { ReactElement, ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type RefreshControlProps } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type RefreshControlProps,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { backIcon, row } from '@/theme/rtl';
@@ -41,23 +49,33 @@ export function Screen({ title, onBack, right, children, scroll, refreshControl 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       {header}
-      {scroll ? (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={refreshControl}
-        >
-          {children}
-        </ScrollView>
-      ) : (
-        <View style={styles.body}>{children}</View>
-      )}
+      {/*
+        Android apps are edge-to-edge (Expo SDK 54+), so the OS no longer shrinks the window
+        when the keyboard opens. Padding the content by the keyboard height keeps the focused
+        field visible and lets the user scroll to everything above it.
+      */}
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'web' ? undefined : 'padding'}>
+        {scroll ? (
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={false}
+            refreshControl={refreshControl}
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={styles.body}>{children}</View>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  flex: { flex: 1 },
   header: {
     flexDirection: row,
     alignItems: 'center',

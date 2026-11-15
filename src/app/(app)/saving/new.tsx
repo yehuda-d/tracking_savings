@@ -1,5 +1,4 @@
 import { useRouter } from 'expo-router';
-import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 
 import { SavingForm } from '@/components/SavingForm';
 import { Screen } from '@/components/Screen';
@@ -11,22 +10,19 @@ export default function NewSaving() {
   const create = useCreateSaving();
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Screen title="חיסכון חדש" onBack={() => router.back()} scroll>
-        <SavingForm
-          mode="create"
-          submitting={create.isPending}
-          serverError={create.error ? toHebrewError(create.error) : null}
-          onSubmit={(value) =>
-            create.mutate(
-              { ...value, openingAgorot: value.openingAgorot ?? 0 },
-              { onSuccess: (id) => router.replace({ pathname: '/saving/[id]', params: { id } }) },
-            )
-          }
-        />
-      </Screen>
-    </KeyboardAvoidingView>
+    <Screen title="חיסכון חדש" onBack={() => router.back()} scroll>
+      <SavingForm
+        mode="create"
+        submitting={create.isPending}
+        serverError={create.error ? toHebrewError(create.error) : null}
+        onSubmit={(value) =>
+          create.mutate(
+            { ...value, openingAgorot: value.openingAgorot ?? 0 },
+            { onSuccess: (id) => router.replace({ pathname: '/saving/[id]', params: { id } }) },
+          )
+        }
+      />
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({ flex: { flex: 1 } });

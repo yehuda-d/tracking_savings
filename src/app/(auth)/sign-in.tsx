@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { useAuth } from '@/auth/AuthProvider';
 import { AppText } from '@/components/AppText';
@@ -35,40 +35,38 @@ export default function SignIn() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Screen scroll>
-        <AuthHero subtitle="החסכונות של כולכם, במקום אחד" />
-        <TextField
-          label="אימייל"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          textContentType="emailAddress"
-        />
-        <TextField
-          label="סיסמה"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete="password"
-          textContentType="password"
-          onSubmitEditing={submit}
-        />
-        {error ? (
-          <AppText color={colors.negative} align="center">
-            {error}
-          </AppText>
-        ) : null}
-        <Button title="התחברות" onPress={submit} loading={busy} />
-        <Link href="/sign-up" replace style={styles.link}>
-          <AppText color={colors.primary} weight="medium" align="center">
-            אין לך חשבון? להרשמה
-          </AppText>
-        </Link>
-      </Screen>
-    </KeyboardAvoidingView>
+    <Screen scroll>
+      <AuthHero subtitle="החסכונות של כולכם, במקום אחד" />
+      <TextField
+        label="אימייל"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        textContentType="emailAddress"
+      />
+      <TextField
+        label="סיסמה"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        autoComplete="password"
+        textContentType="password"
+        onSubmitEditing={submit}
+      />
+      {error ? (
+        <AppText color={colors.negative} align="center">
+          {error}
+        </AppText>
+      ) : null}
+      <Button title="התחברות" onPress={submit} loading={busy} />
+      <Link href="/sign-up" replace style={styles.link}>
+        <AppText color={colors.primary} weight="medium" align="center">
+          אין לך חשבון? להרשמה
+        </AppText>
+      </Link>
+    </Screen>
   );
 }
 

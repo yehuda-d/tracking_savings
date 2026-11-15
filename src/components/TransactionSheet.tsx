@@ -130,7 +130,7 @@ function SheetForm({ savingId, kind, balanceAgorot, onClose, onDone, add }: Shee
     );
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'web' ? undefined : 'padding'}>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="סגירה" />
       <View style={styles.sheet}>
         <View style={styles.handle} />
