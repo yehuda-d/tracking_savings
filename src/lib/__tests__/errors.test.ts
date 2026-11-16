@@ -15,6 +15,10 @@ describe('toHebrewError', () => {
     ['User already registered', 'כבר קיים משתמש עם האימייל הזה'],
     ['Password should be at least 6 characters.', 'הסיסמה צריכה להיות לפחות 6 תווים'],
     ['Unable to validate email address: invalid format', 'כתובת האימייל לא תקינה'],
+    ['Token has expired or is invalid', 'הקוד שגוי או שפג תוקפו. אפשר לבקש קוד חדש'],
+    ['For security purposes, you can only request this after 42 seconds.', 'אפשר לבקש קוד חדש רק אחרי דקה'],
+    ['New password should be different from the old password.', 'הסיסמה החדשה חייבת להיות שונה מהקודמת'],
+    ['Error sending recovery email', 'שליחת המייל נכשלה. נסה שוב מאוחר יותר'],
   ])('maps %p', (message, hebrew) => {
     expect(toHebrewError({ message })).toBe(hebrew);
   });

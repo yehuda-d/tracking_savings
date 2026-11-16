@@ -61,6 +61,11 @@ export default function SignIn() {
         </AppText>
       ) : null}
       <Button title="התחברות" onPress={submit} loading={busy} />
+      <Link href={{ pathname: '/forgot-password', params: { email: email.trim() } }} style={styles.link}>
+        <AppText color={colors.textMuted} align="center">
+          שכחתי סיסמה
+        </AppText>
+      </Link>
       <Link href="/sign-up" replace style={styles.link}>
         <AppText color={colors.primary} weight="medium" align="center">
           אין לך חשבון? להרשמה

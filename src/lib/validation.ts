@@ -122,3 +122,20 @@ export function validateRevaluationForm(
     value: { kind: diff > 0 ? 'gain' : 'loss', amountAgorot: Math.abs(diff), occurredOn: v.occurredOn },
   };
 }
+
+export interface PasswordResetValues {
+  code: string;
+  password: string;
+  confirm: string;
+}
+
+/** The emailed recovery code (6–8 digits; spaces ignored) plus a new password typed twice. */
+export function validatePasswordReset(v: PasswordResetValues): ValidationResult<{ code: string; password: string }> {
+  const errors: Record<string, string> = {};
+  const code = v.code.replace(/\s+/g, '');
+  if (!/^\d{6,8}$/.test(code)) errors.code = 'נא להזין את הקוד מהמייל (6 ספרות)';
+  if (v.password.length < 6) errors.password = 'הסיסמה צריכה להיות לפחות 6 תווים';
+  else if (v.password !== v.confirm) errors.confirm = 'הסיסמאות לא תואמות';
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  return { ok: true, value: { code, password: v.password } };
+}

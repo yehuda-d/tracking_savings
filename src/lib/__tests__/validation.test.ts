@@ -1,4 +1,9 @@
-import { validateRevaluationForm, validateSavingForm, validateTransactionForm } from '../validation';
+import {
+  validatePasswordReset,
+  validateRevaluationForm,
+  validateSavingForm,
+  validateTransactionForm,
+} from '../validation';
 
 describe('validateSavingForm', () => {
   it('reports every missing or invalid field', () => {
@@ -161,5 +166,33 @@ describe('validateRevaluationForm', () => {
     const future = validateRevaluationForm({ ...base, valueInput: '600', occurredOn: '2026-11-16' });
     expect(future.ok).toBe(false);
     if (!future.ok) expect(future.errors.occurredOn).toBeTruthy();
+  });
+});
+
+describe('validatePasswordReset', () => {
+  const ok = { code: '123456', password: 'secret1', confirm: 'secret1' };
+  it('accepts a 6-digit code and matching passwords', () => {
+    expect(validatePasswordReset(ok)).toEqual({ ok: true, value: { code: '123456', password: 'secret1' } });
+  });
+  it('strips spaces from the code and accepts 8 digits', () => {
+    expect(validatePasswordReset({ ...ok, code: ' 1234 5678 ' })).toEqual({
+      ok: true,
+      value: { code: '12345678', password: 'secret1' },
+    });
+  });
+  it.each(['', '12345', '123456789', 'abcdef'])('rejects code %p', (code) => {
+    const r = validatePasswordReset({ ...ok, code });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.code).toBeTruthy();
+  });
+  it('rejects a short password', () => {
+    const r = validatePasswordReset({ ...ok, password: '12345', confirm: '12345' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.password).toBe('הסיסמה צריכה להיות לפחות 6 תווים');
+  });
+  it('rejects mismatched passwords', () => {
+    const r = validatePasswordReset({ ...ok, confirm: 'secret2' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.confirm).toBe('הסיסמאות לא תואמות');
   });
 });
