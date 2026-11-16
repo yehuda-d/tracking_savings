@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { useAddTransaction } from '@/data/transactions';
-import { todayLocalISO } from '@/lib/dates';
+import { formatDateHe, todayLocalISO } from '@/lib/dates';
 import { toHebrewError } from '@/lib/errors';
-import { formatAgorot, formatSignedAgorot } from '@/lib/money';
+import { balanceAsOf, formatAgorot, formatSignedAgorot } from '@/lib/money';
+import type { Transaction } from '@/lib/types';
 import { validateRevaluationForm, validateTransactionForm } from '@/lib/validation';
 import { row } from '@/theme/rtl';
 import { colors, radius, space } from '@/theme/tokens';
@@ -21,6 +22,10 @@ export interface TransactionSheetProps {
   /** 'revalue' asks for today's value and records the difference as a gain or loss. */
   kind: 'deposit' | 'withdrawal' | 'revalue';
   balanceAgorot: number;
+  /** History of this saving; lets a backdated revaluation compare against that day's balance. */
+  transactions?: readonly Pick<Transaction, 'kind' | 'amount_agorot' | 'occurred_on'>[];
+  /** Initial date (YYYY-MM-DD); defaults to today. */
+  initialDate?: string;
   onClose: () => void;
 }
 
@@ -63,25 +68,30 @@ type SheetFormProps = Omit<TransactionSheetProps, 'visible'> & {
   onDone: () => void;
 };
 
-function SheetForm({ savingId, kind, balanceAgorot, onClose, onDone, add }: SheetFormProps) {
+function SheetForm({ savingId, kind, balanceAgorot, transactions, initialDate, onClose, onDone, add }: SheetFormProps) {
   const [amount, setAmount] = useState('');
-  const [occurredOn, setOccurredOn] = useState(todayLocalISO());
+  const [occurredOn, setOccurredOn] = useState(initialDate ?? todayLocalISO());
   const [note, setNote] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const copy = COPY[kind];
   const today = todayLocalISO();
 
-  // Live preview for revaluation: what difference will be recorded.
+  // A revaluation compares to the balance on its own date (a backdated report must not be
+  // measured against deposits made after it). Without history, fall back to the current balance.
+  const isBackdated = kind === 'revalue' && occurredOn !== today && !!transactions;
+  const baseAgorot = isBackdated ? balanceAsOf(transactions!, occurredOn) : balanceAgorot;
+
+  // Live preview for revaluation: what difference will be recorded (or why it can't be).
   const preview =
     kind === 'revalue' && amount.trim() !== ''
-      ? validateRevaluationForm({ valueInput: amount, occurredOn: today, balanceAgorot, today })
+      ? validateRevaluationForm({ valueInput: amount, occurredOn: today, balanceAgorot: baseAgorot, today })
       : null;
 
   function submit() {
     if (add.isPending) return;
     let tx: { kind: 'deposit' | 'withdrawal' | 'gain' | 'loss'; amountAgorot: number; occurredOn: string };
     if (kind === 'revalue') {
-      const r = validateRevaluationForm({ valueInput: amount, occurredOn, balanceAgorot, today });
+      const r = validateRevaluationForm({ valueInput: amount, occurredOn, balanceAgorot: baseAgorot, today });
       if (!r.ok) {
         const { value, ...rest } = r.errors;
         setErrors(value ? { ...rest, amount: value } : rest);
@@ -117,7 +127,9 @@ function SheetForm({ savingId, kind, balanceAgorot, onClose, onDone, add }: Shee
               {copy.title}
             </AppText>
             <AppText size="sm" color={colors.textMuted}>
-              {`יתרה נוכחית: ‎${formatAgorot(balanceAgorot)}‎`}
+              {isBackdated
+                ? `יתרה ב-${formatDateHe(occurredOn)}: ‎${formatAgorot(baseAgorot)}‎`
+                : `יתרה נוכחית: ‎${formatAgorot(balanceAgorot)}‎`}
             </AppText>
           </View>
         </View>
@@ -136,6 +148,8 @@ function SheetForm({ savingId, kind, balanceAgorot, onClose, onDone, add }: Shee
           <AppText weight="bold" color={preview.value.kind === 'gain' ? colors.positive : colors.negative}>
             {`${preview.value.kind === 'gain' ? 'רווח של' : 'הפסד של'} ‎${formatSignedAgorot(preview.value.amountAgorot, preview.value.kind)}‎`}
           </AppText>
+        ) : preview && !preview.ok && preview.errors.value && !errors.amount ? (
+          <AppText color={colors.textMuted}>{preview.errors.value}</AppText>
         ) : null}
         <DateField
           label="תאריך"

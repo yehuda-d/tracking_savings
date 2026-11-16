@@ -129,7 +129,11 @@ export default function SavingDetail() {
             <AppText size="sm" color={colors.textMuted}>
               רווח מצטבר:
             </AppText>
-            <AmountText agorot={s.gains_agorot} kind={s.gains_agorot < 0 ? 'loss' : 'gain'} size="sm" />
+            <AmountText
+              agorot={s.gains_agorot}
+              kind={s.gains_agorot === 0 ? undefined : s.gains_agorot < 0 ? 'loss' : 'gain'}
+              size="sm"
+            />
           </View>
         ) : null}
       </Card>
@@ -182,6 +186,7 @@ export default function SavingDetail() {
         savingId={s.id}
         kind={sheet ?? 'deposit'}
         balanceAgorot={s.balance_agorot}
+        transactions={transactions.data}
         onClose={() => setSheet(null)}
       />
 

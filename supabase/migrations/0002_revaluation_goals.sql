@@ -11,6 +11,9 @@ alter table public.savings
   add column if not exists goal_agorot bigint,
   add column if not exists goal_date date;
 
+-- drop-if-exists keeps the script re-runnable
+alter table public.savings drop constraint if exists savings_goal_amount;
+alter table public.savings drop constraint if exists savings_goal_date_needs_amount;
 alter table public.savings
   add constraint savings_goal_amount check (goal_agorot is null or (goal_agorot > 0 and goal_agorot <= 99999999999)),
   add constraint savings_goal_date_needs_amount check (goal_date is null or goal_agorot is not null);

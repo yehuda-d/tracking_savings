@@ -81,4 +81,31 @@ describe('TransactionSheet', () => {
     expect(screen.getByText('השווי זהה ליתרה הנוכחית')).toBeTruthy();
     expect(mockMutate).not.toHaveBeenCalled();
   });
+
+  it('revalue mode shows the same-value error while typing', async () => {
+    await renderSheet('revalue');
+    await fireEvent.changeText(screen.getByLabelText('כמה שווה היום? (₪)'), '500');
+    expect(screen.getByText('השווי זהה ליתרה הנוכחית')).toBeTruthy();
+  });
+
+  it('a backdated revaluation compares to the balance on that date', async () => {
+    const txs = [
+      { kind: 'opening', amount_agorot: 1000000, occurred_on: '2026-09-01' },
+      { kind: 'deposit', amount_agorot: 100000, occurred_on: '2026-10-10' },
+    ];
+    await render(
+      <TransactionSheet
+        visible
+        savingId="s1"
+        kind="revalue"
+        balanceAgorot={1100000}
+        transactions={txs as never}
+        initialDate="2026-09-30"
+        onClose={jest.fn()}
+      />,
+    );
+    await fireEvent.changeText(screen.getByLabelText('כמה שווה היום? (₪)'), '10,500');
+    await fireEvent.press(screen.getByRole('button', { name: 'עדכון' }));
+    expect(mockMutate.mock.calls[0][0]).toMatchObject({ kind: 'gain', amountAgorot: 50000, occurredOn: '2026-09-30' });
+  });
 });

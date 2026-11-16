@@ -55,3 +55,20 @@ export function formatSignedAgorot(agorot: number, kind: TransactionKind): strin
   if (kind === 'opening') return base;
   return isNegativeKind(kind) ? `−${base}` : `+${base}`;
 }
+
+/** Integer agorot → editable shekel text without float math: 4000050 → "40000.50". */
+export function agorotToInput(agorot: number): string {
+  const shekels = Math.floor(agorot / 100);
+  const rest = agorot % 100;
+  return rest === 0 ? String(shekels) : `${shekels}.${String(rest).padStart(2, '0')}`;
+}
+
+/** Balance from transactions dated on or before `date` (YYYY-MM-DD). */
+export function balanceAsOf(
+  transactions: readonly { kind: TransactionKind; amount_agorot: number; occurred_on: string }[],
+  date: string,
+): number {
+  return transactions
+    .filter((t) => t.occurred_on <= date)
+    .reduce((sum, t) => sum + (isNegativeKind(t.kind) ? -t.amount_agorot : t.amount_agorot), 0);
+}

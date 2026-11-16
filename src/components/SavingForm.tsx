@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { LOCATION_TYPES, locationIcon, locationLabel } from '@/lib/locationTypes';
+import { agorotToInput } from '@/lib/money';
 import type { LocationType, SavingInput, SavingWithBalance } from '@/lib/types';
 import { validateSavingForm } from '@/lib/validation';
 import { row } from '@/theme/rtl';
@@ -30,7 +31,7 @@ export function SavingForm({ mode, initial, submitting, serverError, onSubmit }:
   const [opening, setOpening] = useState('');
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [hasGoal, setHasGoal] = useState(initial?.goal_agorot != null);
-  const [goal, setGoal] = useState(initial?.goal_agorot != null ? String(initial.goal_agorot / 100) : '');
+  const [goal, setGoal] = useState(initial?.goal_agorot != null ? agorotToInput(initial.goal_agorot) : '');
   const [goalDate, setGoalDate] = useState(initial?.goal_date ?? '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 

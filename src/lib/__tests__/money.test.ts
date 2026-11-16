@@ -1,4 +1,12 @@
-import { formatAgorot, formatSignedAgorot, isNegativeKind, MAX_AGOROT, parseAmountInput } from '../money';
+import {
+  agorotToInput,
+  balanceAsOf,
+  formatAgorot,
+  formatSignedAgorot,
+  isNegativeKind,
+  MAX_AGOROT,
+  parseAmountInput,
+} from '../money';
 
 describe('parseAmountInput', () => {
   it.each([
@@ -68,5 +76,35 @@ describe('gain / loss', () => {
     expect(isNegativeKind('deposit')).toBe(false);
     expect(isNegativeKind('gain')).toBe(false);
     expect(isNegativeKind('opening')).toBe(false);
+  });
+});
+
+describe('agorotToInput', () => {
+  it.each([
+    [40000000, '400000'],
+    [4000050, '40000.50'],
+    [5, '0.05'],
+    [99999999999, '999999999.99'],
+  ])('%p → %p and parses back', (agorot, text) => {
+    expect(agorotToInput(agorot)).toBe(text);
+    expect(parseAmountInput(text)).toEqual({ ok: true, agorot });
+  });
+});
+
+describe('balanceAsOf', () => {
+  const txs = [
+    { kind: 'opening' as const, amount_agorot: 1000000, occurred_on: '2026-09-01' },
+    { kind: 'deposit' as const, amount_agorot: 100000, occurred_on: '2026-10-10' },
+    { kind: 'loss' as const, amount_agorot: 20000, occurred_on: '2026-10-20' },
+    { kind: 'withdrawal' as const, amount_agorot: 5000, occurred_on: '2026-11-01' },
+  ];
+  it('sums only transactions on or before the date', () => {
+    expect(balanceAsOf(txs, '2026-09-30')).toBe(1000000);
+    expect(balanceAsOf(txs, '2026-10-10')).toBe(1100000);
+    expect(balanceAsOf(txs, '2026-10-31')).toBe(1080000);
+    expect(balanceAsOf(txs, '2026-11-16')).toBe(1075000);
+  });
+  it('is zero before any transaction', () => {
+    expect(balanceAsOf(txs, '2026-01-01')).toBe(0);
   });
 });
