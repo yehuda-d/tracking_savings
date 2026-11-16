@@ -18,7 +18,7 @@ const RESEND_SECONDS = 60;
 export default function ForgotPassword() {
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string }>();
-  const { requestPasswordReset, resetPasswordWithCode } = useAuth();
+  const { requestPasswordReset, resetPasswordWithCode, cancelPasswordReset } = useAuth();
 
   const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState(params.email ?? '');
@@ -30,6 +30,13 @@ export default function ForgotPassword() {
   const [busy, setBusy] = useState(false);
   const [resendIn, setResendIn] = useState(0);
 
+  // Leaving this screen drops a half-finished reset (verified code, password not yet saved).
+  useEffect(() => {
+    return () => {
+      void cancelPasswordReset();
+    };
+  }, [cancelPasswordReset]);
+
   useEffect(() => {
     if (resendIn <= 0) return;
     const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
@@ -37,6 +44,11 @@ export default function ForgotPassword() {
   }, [resendIn]);
 
   async function sendCode() {
+    if (step === 'email' && resendIn > 0) {
+      // A code was sent less than a minute ago: go back to entering it instead of hitting the rate limit.
+      setStep('code');
+      return;
+    }
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
       setErrors({ email: 'כתובת האימייל לא תקינה' });
       return;
@@ -74,7 +86,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <Screen scroll onBack={() => (step === 'code' ? setStep('email') : router.back())}>
+    <Screen scroll onBack={busy ? undefined : () => (step === 'code' ? setStep('email') : router.back())}>
       <AuthHero subtitle={step === 'email' ? 'איפוס סיסמה' : 'בדוק את המייל שלך'} />
 
       {step === 'email' ? (

@@ -1,8 +1,11 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { supabase } from '@/lib/supabase';
+
+import { clearStaleRecovery, createRecoveryFlow } from './recovery';
 
 export interface AuthValue {
   session: Session | null;
@@ -15,6 +18,8 @@ export interface AuthValue {
   requestPasswordReset(email: string): Promise<void>;
   /** Verifies the emailed code, sets the new password, and signs the user in. */
   resetPasswordWithCode(email: string, code: string, newPassword: string): Promise<void>;
+  /** Drops a half-finished reset (call when leaving the reset screen). */
+  cancelPasswordReset(): Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
@@ -23,14 +28,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  // While a recovery is in progress the temporary session is kept from the app, so the
-  // route guard doesn't jump to home before the new password is saved.
-  const recovering = useRef(false);
+  // While a recovery is unfinished its temporary session is kept from the app, so the
+  // route guard doesn't jump to home before the new password is saved (see recovery.ts).
+  const recovery = useRef(createRecoveryFlow(supabase.auth, AsyncStorage));
 
   useEffect(() => {
     let active = true;
-    supabase.auth
-      .getSession()
+    clearStaleRecovery(supabase.auth, AsyncStorage)
+      .catch(() => false)
+      .then(() => supabase.auth.getSession())
       .then(({ data }) => {
         if (active) setSession(data.session);
       })
@@ -39,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (active) setLoading(false);
       });
     const { data } = supabase.auth.onAuthStateChange((_event, next) => {
-      if (recovering.current) return;
+      if (recovery.current.isHidingSession()) return;
       setSession(next);
       if (!next) queryClient.clear();
     });
@@ -75,19 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
       async resetPasswordWithCode(email, code, newPassword) {
-        recovering.current = true;
-        try {
-          const { data, error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code, type: 'recovery' });
-          if (error) throw error;
-          const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-          if (updateError) {
-            await supabase.auth.signOut();
-            throw updateError;
-          }
-          setSession(data.session);
-        } finally {
-          recovering.current = false;
-        }
+        const fresh = await recovery.current.reset(email, code, newPassword);
+        setSession(fresh as Session | null);
+      },
+      async cancelPasswordReset() {
+        await recovery.current.cancel();
       },
     }),
     [session, loading, queryClient],
