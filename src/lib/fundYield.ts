@@ -18,7 +18,20 @@ export interface YieldSuggestion {
   kind: 'gain' | 'loss' | null;
 }
 
-const MONTHS = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+const MONTHS = [
+  'ינואר',
+  'פברואר',
+  'מרץ',
+  'אפריל',
+  'מאי',
+  'יוני',
+  'יולי',
+  'אוגוסט',
+  'ספטמבר',
+  'אוקטובר',
+  'נובמבר',
+  'דצמבר',
+];
 
 /** 202609 → "ספטמבר 2026" */
 export function formatPeriodHe(period: number): string {
@@ -48,7 +61,10 @@ export function yieldSuggestion(
   syncedThrough: number | null,
 ): YieldSuggestion | null {
   const fresh = yields
-    .filter((y): y is { period: number; yieldPct: number } => y.yieldPct !== null && (syncedThrough === null || y.period > syncedThrough))
+    .filter(
+      (y): y is { period: number; yieldPct: number } =>
+        y.yieldPct !== null && (syncedThrough === null || y.period > syncedThrough),
+    )
     .sort((a, b) => a.period - b.period);
   if (fresh.length === 0) return null;
 
@@ -73,4 +89,26 @@ export function rankFunds<T extends { name: string }>(results: readonly T[], que
     .map((r, i) => ({ r, i, s: score(r.name) }))
     .sort((a, b) => b.s - a.s || a.i - b.i)
     .map((x) => x.r);
+}
+
+export interface FundLink {
+  id: number;
+  name: string;
+  syncedThrough: number | null;
+}
+
+/**
+ * Which fund columns a saving form should write. Only a real change is sent: re-sending an
+ * unchanged link would overwrite fund_synced_through with the value captured when the form
+ * opened, undoing an update the partner applied meanwhile (and allowing a double apply).
+ */
+export function fundFieldsToSave(
+  initialFundId: number | null,
+  linked: FundLink | null,
+  typeSupportsFunds: boolean,
+): { fund_id?: number | null; fund_name?: string | null; fund_synced_through?: number | null } {
+  const target = typeSupportsFunds ? linked : null;
+  if ((target?.id ?? null) === initialFundId) return {};
+  if (!target) return { fund_id: null, fund_name: null, fund_synced_through: null };
+  return { fund_id: target.id, fund_name: target.name, fund_synced_through: target.syncedThrough };
 }

@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 
 import { rankFunds, type MonthlyYield } from '@/lib/fundYield';
 
+import { queryKeys } from './queryKeys';
+
 /**
  * Official Gemel-Net data (Capital Market Authority) on data.gov.il.
  * Public CKAN API, no key, CORS open. The "2024 until today" resource is looked up
@@ -21,9 +23,9 @@ export interface FundSearchResult {
 async function ckan<T>(action: string, params: Record<string, string | number>): Promise<T> {
   const qs = new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString();
   const res = await fetch(`${API}/${action}?${qs}`);
-  if (!res.ok) throw new Error(`Network request failed (${res.status})`);
-  const json = (await res.json()) as { success: boolean; result: T };
-  if (!json.success) throw new Error('Network request failed');
+  if (!res.ok) throw new Error(`GEMELNET_UNAVAILABLE (${res.status})`); // fetch TypeError above = no internet
+  const json = (await res.json().catch(() => null)) as { success: boolean; result: T } | null;
+  if (!json?.success) throw new Error('GEMELNET_UNAVAILABLE');
   return json.result;
 }
 
@@ -49,7 +51,7 @@ export async function latestPublishedPeriod(): Promise<number> {
     fields: 'REPORT_PERIOD',
   });
   const period = r.records[0]?.REPORT_PERIOD;
-  if (!period) throw new Error('Network request failed');
+  if (!period) throw new Error('GEMELNET_UNAVAILABLE');
   return period;
 }
 
@@ -70,14 +72,19 @@ export async function searchFunds(query: string): Promise<{ period: number; resu
   params.filters = JSON.stringify(filters);
 
   const r = await ckan<{
-    records: { FUND_ID: number; FUND_NAME: string; MANAGING_CORPORATION: string; FUND_CLASSIFICATION: string }[];
+    records: {
+      FUND_ID: number;
+      FUND_NAME: string | null;
+      MANAGING_CORPORATION: string | null;
+      FUND_CLASSIFICATION: string | null;
+    }[];
   }>('datastore_search', params);
   const mapped = r.records.map((x) => ({
-      fundId: x.FUND_ID,
-      name: x.FUND_NAME.trim(),
-      manager: x.MANAGING_CORPORATION.trim(),
-      classification: x.FUND_CLASSIFICATION.trim(),
-    }));
+    fundId: x.FUND_ID,
+    name: (x.FUND_NAME ?? '').trim(),
+    manager: (x.MANAGING_CORPORATION ?? '').trim(),
+    classification: (x.FUND_CLASSIFICATION ?? '').trim(),
+  }));
   return { period, results: rankFunds(mapped, q) };
 }
 
@@ -96,7 +103,7 @@ export async function fundMonthlyYields(fundId: number): Promise<MonthlyYield[]>
 
 export function useFundYields(fundId: number | null) {
   return useQuery({
-    queryKey: ['fund-yields', fundId],
+    queryKey: queryKeys.fundYields(fundId),
     queryFn: () => fundMonthlyYields(fundId!),
     enabled: fundId !== null,
     staleTime: 6 * 60 * 60 * 1000, // published monthly; refresh a few times a day at most

@@ -49,7 +49,9 @@ export function useCreateSaving() {
       if (error) throw error;
       const id = data as string;
       if (input.fund_id) {
-        const { error: linkError } = await supabase
+        // Best effort: the saving already exists, so a failure here must not make the user
+        // retry (that would create a duplicate). They can link again from the edit screen.
+        await supabase
           .from('savings')
           .update({
             fund_id: input.fund_id,
@@ -57,7 +59,6 @@ export function useCreateSaving() {
             fund_synced_through: input.fund_synced_through,
           })
           .eq('id', id);
-        if (linkError) throw linkError;
       }
       return id;
     },

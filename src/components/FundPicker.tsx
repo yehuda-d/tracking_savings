@@ -10,6 +10,7 @@ import { backIcon, row } from '@/theme/rtl';
 import { colors, radius, space } from '@/theme/tokens';
 
 import { AppText } from './AppText';
+import { Button } from './Button';
 import { TextField } from './TextField';
 
 export interface PickedFund {
@@ -42,11 +43,20 @@ function PickerBody({ initialQuery, onPick, onClose }: Omit<FundPickerProps, 'vi
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
-  // Debounced search; ignores stale responses.
+  const [attempt, setAttempt] = useState(0);
+
+  // Debounced search; ignores stale responses. Every state change happens in the timer
+  // callback, so a query that gets too short never leaves a spinner or old error behind.
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) return;
     let cancelled = false;
+    if (q.length < 2) {
+      const t = setTimeout(() => {
+        setStatus('idle');
+        setError(null);
+      }, 0);
+      return () => clearTimeout(t);
+    }
     const t = setTimeout(() => {
       setStatus('loading');
       searchFunds(q)
@@ -58,6 +68,7 @@ function PickerBody({ initialQuery, onPick, onClose }: Omit<FundPickerProps, 'vi
         })
         .catch((e) => {
           if (cancelled) return;
+          setResults([]);
           setError(toHebrewError(e));
           setStatus('error');
         });
@@ -66,7 +77,7 @@ function PickerBody({ initialQuery, onPick, onClose }: Omit<FundPickerProps, 'vi
       cancelled = true;
       clearTimeout(t);
     };
-  }, [query]);
+  }, [query, attempt]);
 
   const tooShort = query.trim().length < 2;
 
@@ -95,9 +106,12 @@ function PickerBody({ initialQuery, onPick, onClose }: Omit<FundPickerProps, 'vi
       </View>
       {status === 'loading' ? <ActivityIndicator style={styles.spinner} color={colors.primary} /> : null}
       {status === 'error' ? (
-        <AppText color={colors.negative} align="center" style={styles.message}>
-          {error}
-        </AppText>
+        <View style={styles.message}>
+          <AppText color={colors.negative} align="center">
+            {error}
+          </AppText>
+          <Button title="נסה שוב" variant="secondary" compact onPress={() => setAttempt((a) => a + 1)} />
+        </View>
       ) : null}
       <FlatList
         data={tooShort ? [] : results}
@@ -134,7 +148,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: row, alignItems: 'center', gap: space(2), padding: space(5), paddingBottom: space(2) },
   search: { paddingHorizontal: space(5), gap: space(1.5) },
   spinner: { marginTop: space(4) },
-  message: { padding: space(6) },
+  message: { padding: space(6), gap: space(3), alignItems: 'center' },
   list: { padding: space(5), gap: space(2) },
   item: {
     backgroundColor: colors.surface,

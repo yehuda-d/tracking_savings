@@ -11,6 +11,9 @@ export default function EditSaving() {
   const router = useRouter();
   const saving = useSaving(id);
   const update = useUpdateSaving();
+  // Opened directly (web refresh / deep link) there is no screen to go back to.
+  const leave = () =>
+    router.canGoBack() ? router.back() : router.replace({ pathname: '/saving/[id]', params: { id } });
 
   let body;
   if (saving.isPending) body = <LoadingState />;
@@ -25,19 +28,13 @@ export default function EditSaving() {
         initial={saving.data}
         submitting={update.isPending}
         serverError={update.error ? toHebrewError(update.error) : null}
-        onSubmit={({ purpose, location_type, institution, notes, goal_agorot, goal_date }) =>
-          update.mutate(
-            { id, purpose, location_type, institution, notes, goal_agorot, goal_date },
-            { onSuccess: () => router.back() },
-          )
-        }
+        onSubmit={(value) => update.mutate({ id, ...value }, { onSuccess: leave })}
       />
     );
 
   return (
-    <Screen title="עריכת חיסכון" onBack={() => router.back()} scroll={Boolean(saving.data)}>
+    <Screen title="עריכת חיסכון" onBack={leave} scroll={Boolean(saving.data)}>
       {body}
     </Screen>
   );
 }
-

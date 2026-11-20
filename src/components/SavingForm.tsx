@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { LOCATION_TYPES, locationIcon, locationLabel } from '@/lib/locationTypes';
+import { fundFieldsToSave } from '@/lib/fundYield';
 import { agorotToInput } from '@/lib/money';
 import type { LocationType, SavingInput, SavingWithBalance } from '@/lib/types';
 import { validateSavingForm } from '@/lib/validation';
@@ -59,13 +60,7 @@ export function SavingForm({ mode, initial, submitting, serverError, onSubmit }:
     }
     setErrors({});
     // Official returns exist only for provident/study funds; other types are unlinked.
-    const linked = canLinkFund ? fund : null;
-    onSubmit({
-      ...result.value,
-      fund_id: linked?.id ?? null,
-      fund_name: linked?.name ?? null,
-      fund_synced_through: linked?.syncedThrough ?? null,
-    });
+    onSubmit({ ...result.value, ...fundFieldsToSave(initial?.fund_id ?? null, fund, canLinkFund) });
   }
 
   return (
@@ -133,7 +128,7 @@ export function SavingForm({ mode, initial, submitting, serverError, onSubmit }:
 
       {canLinkFund ? (
         <View style={styles.goalBox}>
-          <AppText weight="bold">עדכון תשואה אוטומטי (לא חובה)</AppText>
+          <AppText weight="bold">קישור לקרן (לא חובה)</AppText>
           {fund ? (
             <>
               <AppText>{fund.name}</AppText>

@@ -1,4 +1,4 @@
-import { formatPeriodHe, formatPeriodsHe, rankFunds, yieldSuggestion } from '../fundYield';
+import { formatPeriodHe, formatPeriodsHe, fundFieldsToSave, rankFunds, yieldSuggestion } from '../fundYield';
 
 describe('formatPeriodHe', () => {
   it('names the month in Hebrew', () => {
@@ -89,5 +89,23 @@ describe('rankFunds', () => {
   });
   it('keeps the original order for ties', () => {
     expect(rankFunds([f(1, 'א ב'), f(2, 'א ג')], 'א').map((x) => x.fundId)).toEqual([1, 2]);
+  });
+});
+
+describe('fundFieldsToSave', () => {
+  const linked = { id: 880, name: 'מיטב השתלמות כללי', syncedThrough: 202610 };
+  it('sends nothing when the link did not change (keeps the server marker)', () => {
+    expect(fundFieldsToSave(880, { ...linked, syncedThrough: 202608 }, true)).toEqual({});
+    expect(fundFieldsToSave(null, null, true)).toEqual({});
+    expect(fundFieldsToSave(null, null, false)).toEqual({});
+  });
+  it('sends the new fund when linking or switching', () => {
+    expect(fundFieldsToSave(null, linked, true)).toEqual({ fund_id: 880, fund_name: 'מיטב השתלמות כללי', fund_synced_through: 202610 });
+    expect(fundFieldsToSave(111, linked, true)).toEqual({ fund_id: 880, fund_name: 'מיטב השתלמות כללי', fund_synced_through: 202610 });
+  });
+  it('unlinks when removed or when the type no longer supports funds', () => {
+    const cleared = { fund_id: null, fund_name: null, fund_synced_through: null };
+    expect(fundFieldsToSave(880, null, true)).toEqual(cleared);
+    expect(fundFieldsToSave(880, linked, false)).toEqual(cleared);
   });
 });

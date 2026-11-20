@@ -4,4 +4,5 @@ export const queryKeys = {
   savings: ['savings'] as const,
   saving: (id: string) => ['saving', id] as const,
   transactions: (savingId: string) => ['transactions', savingId] as const,
+  fundYields: (fundId: number | null) => ['fund-yields', fundId] as const,
 };

@@ -50,3 +50,9 @@ describe('shouldResyncHousehold', () => {
     expect(shouldResyncHousehold(err)).toBe(expected);
   });
 });
+
+describe('gemelnet errors', () => {
+  it('distinguishes the data source being down from no internet', () => {
+    expect(toHebrewError(new Error('GEMELNET_UNAVAILABLE'))).toBe('מאגר גמל-נט לא זמין כרגע. נסו שוב מאוחר יותר');
+  });
+});

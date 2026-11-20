@@ -15,11 +15,17 @@ import { Button } from './Button';
 import { Card } from './Card';
 
 const ltr = (s: string) => `‎${s}‎`;
-const pct = (p: number) => `${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p).toFixed(2)}%`;
+const pct = (p: number) => {
+  const text = Math.abs(p).toFixed(2);
+  const sign = text === '0.00' ? '' : p > 0 ? '+' : '−';
+  return `${sign}${text}%`;
+};
 
 /** For a saving linked to a Gemel-Net fund: offers to apply newly published official returns. */
 export function FundYieldCard({ saving }: { saving: SavingWithBalance }) {
-  const fundId = saving.fund_id ?? null;
+  // Official returns exist only for provident/study funds.
+  const supportsFund = saving.location_type === 'provident_fund' || saving.location_type === 'study_fund';
+  const fundId = supportsFund ? (saving.fund_id ?? null) : null;
   const yields = useFundYields(fundId);
   const apply = useApplyFundYield();
 
@@ -62,39 +68,44 @@ export function FundYieldCard({ saving }: { saving: SavingWithBalance }) {
         </AppText>
       </View>
       <AppText>
-        {'הקרן הניבה '}
+        {`תשואת הקרן ב${periodsText}: `}
         <AppText weight="bold" color={tint}>
           {ltr(pct(s.totalPct))}
         </AppText>
-        {` ב${periodsText}.`}
       </AppText>
-      <AppText color={colors.textMuted}>
-        {`שווי מעודכן: ${ltr(formatAgorot(s.newValueAgorot))}`}
-        {s.kind ? ` · ${ltr(formatSignedAgorot(Math.abs(s.deltaAgorot), s.kind))}` : ''}
-      </AppText>
+      {s.kind ? (
+        <AppText color={colors.textMuted}>
+          {`שווי מעודכן: ${ltr(formatAgorot(s.newValueAgorot))}`}
+          {` · ${ltr(formatSignedAgorot(Math.abs(s.deltaAgorot), s.kind))}`}
+        </AppText>
+      ) : (
+        <AppText color={colors.textMuted}>השווי לא משתנה בעקבות זה.</AppText>
+      )}
       <AppText size="xs" color={colors.textMuted}>
         זו תשואת הקרן לפני דמי הניהול האישיים שלכם, אז ייתכן הבדל קטן מהדוח.
       </AppText>
       {apply.error ? <AppText color={colors.negative}>{toHebrewError(apply.error)}</AppText> : null}
       <View style={styles.buttons}>
+        {s.kind ? (
+          <View style={styles.flex}>
+            <Button
+              title="עדכון שווי"
+              loading={apply.isPending}
+              onPress={() =>
+                apply.mutate({
+                  savingId: saving.id,
+                  through: s.throughPeriod,
+                  kind: s.kind,
+                  amountAgorot: Math.abs(s.deltaAgorot),
+                  note,
+                })
+              }
+            />
+          </View>
+        ) : null}
         <View style={styles.flex}>
           <Button
-            title="עדכון שווי"
-            loading={apply.isPending}
-            onPress={() =>
-              apply.mutate({
-                savingId: saving.id,
-                through: s.throughPeriod,
-                kind: s.kind,
-                amountAgorot: Math.abs(s.deltaAgorot),
-                note,
-              })
-            }
-          />
-        </View>
-        <View style={styles.flex}>
-          <Button
-            title="כבר עדכנתי"
+            title={s.kind ? 'כבר עדכנתי' : 'סימון כמעודכן'}
             variant="ghost"
             disabled={apply.isPending}
             onPress={() =>
