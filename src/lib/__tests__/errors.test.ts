@@ -9,6 +9,7 @@ describe('toHebrewError', () => {
     ['CANNOT_REMOVE_SELF', 'אי אפשר להסיר את עצמך. אפשר לעזוב את משק הבית בהגדרות'],
     ['INVALID_DATE', 'תאריך לא תקין'],
     ['NOT_FOUND', 'הפריט לא נמצא. ייתכן שנמחק'],
+    ['ALREADY_APPLIED', 'העדכון הזה כבר נרשם (אולי מהטלפון השני)'],
     ['LAST_MEMBER', 'אתה החבר האחרון. עזיבה תמחק את משק הבית'],
     ['NOT_IN_HOUSEHOLD', 'אינך חבר במשק בית'],
     ['Invalid login credentials', 'אימייל או סיסמה שגויים'],

@@ -28,6 +28,11 @@ export interface SavingInput {
   goal_agorot: number | null;
   /** Optional target date (YYYY-MM-DD); only set together with goal_agorot. */
   goal_date: string | null;
+  /** Linked Gemel-Net fund (provident/study funds only). Omitted = leave unchanged. */
+  fund_id?: number | null;
+  fund_name?: string | null;
+  /** Last official month (YYYYMM) already applied to this saving. */
+  fund_synced_through?: number | null;
 }
 
 export interface SavingWithBalance extends SavingInput {

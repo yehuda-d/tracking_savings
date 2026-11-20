@@ -47,7 +47,19 @@ export function useCreateSaving() {
         p_opened_on: todayLocalISO(),
       });
       if (error) throw error;
-      return data as string;
+      const id = data as string;
+      if (input.fund_id) {
+        const { error: linkError } = await supabase
+          .from('savings')
+          .update({
+            fund_id: input.fund_id,
+            fund_name: input.fund_name,
+            fund_synced_through: input.fund_synced_through,
+          })
+          .eq('id', id);
+        if (linkError) throw linkError;
+      }
+      return id;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.savings }),
   });
@@ -66,6 +78,9 @@ export function useUpdateSaving() {
           notes: input.notes,
           goal_agorot: input.goal_agorot,
           goal_date: input.goal_date,
+          ...(input.fund_id !== undefined
+            ? { fund_id: input.fund_id, fund_name: input.fund_name, fund_synced_through: input.fund_synced_through }
+            : {}),
         })
         .eq('id', id)
         .select('id');
@@ -89,6 +104,37 @@ export function useDeleteSaving() {
     onSuccess: (_void, id) => {
       queryClient.removeQueries({ queryKey: queryKeys.saving(id) });
       queryClient.removeQueries({ queryKey: queryKeys.transactions(id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.savings });
+    },
+  });
+}
+
+export interface ApplyFundYieldInput {
+  savingId: string;
+  /** YYYYMM of the latest month being applied. */
+  through: number;
+  kind: 'gain' | 'loss' | null;
+  amountAgorot: number;
+  note: string | null;
+}
+
+/** Records an official fund return (or just marks it as handled) atomically on the server. */
+export function useApplyFundYield() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (i: ApplyFundYieldInput): Promise<void> => {
+      const { error } = await supabase.rpc('apply_fund_yield', {
+        p_saving_id: i.savingId,
+        p_through: i.through,
+        p_kind: i.kind,
+        p_amount: i.kind ? i.amountAgorot : 0,
+        p_note: i.note,
+      });
+      if (error) throw error;
+    },
+    onSettled: (_r, _e, i) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.saving(i.savingId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.transactions(i.savingId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.savings });
     },
   });

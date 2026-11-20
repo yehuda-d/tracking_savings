@@ -12,7 +12,9 @@ const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!url || !anonKey || !serviceKey) {
-  console.error('Missing EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY (.env) or SUPABASE_SERVICE_ROLE_KEY (.env.local)');
+  console.error(
+    'Missing EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY (.env) or SUPABASE_SERVICE_ROLE_KEY (.env.local)',
+  );
   process.exit(2);
 }
 
@@ -75,7 +77,11 @@ async function main() {
   });
   if (sErr || !savingId) throw new Error(`create_saving: ${sErr?.message}`);
   const { data: aRows } = await A.client.from('savings_with_balance').select('*');
-  check('1. owner sees own saving with opening balance', aRows?.length === 1 && aRows[0].balance_agorot === 50000, aRows);
+  check(
+    '1. owner sees own saving with opening balance',
+    aRows?.length === 1 && aRows[0].balance_agorot === 50000,
+    aRows,
+  );
 
   // 2. B in another household sees nothing of A
   const { data: hB, error: hBErr } = await B.client.rpc('create_household', { p_name: 'B' });
@@ -84,7 +90,11 @@ async function main() {
   const { data: bAll } = await B.client.from('savings_with_balance').select('*');
   const { data: bById } = await B.client.from('savings').select('*').eq('id', savingId);
   const { data: bTx } = await B.client.from('transactions').select('*').eq('saving_id', savingId);
-  check('2. other household cannot read savings or transactions', bAll?.length === 0 && bById?.length === 0 && bTx?.length === 0, { bAll, bById, bTx });
+  check(
+    '2. other household cannot read savings or transactions',
+    bAll?.length === 0 && bById?.length === 0 && bTx?.length === 0,
+    { bAll, bById, bTx },
+  );
 
   // 3. B cannot write to A's saving
   const { error: bInsErr } = await B.client
@@ -123,7 +133,13 @@ async function main() {
   const tx = (amount: number, kind: 'deposit' | 'withdrawal', occurred_on?: string) =>
     A.client
       .from('transactions')
-      .insert({ saving_id: savingId, kind, amount_agorot: amount, created_by: A.id, ...(occurred_on ? { occurred_on } : {}) });
+      .insert({
+        saving_id: savingId,
+        kind,
+        amount_agorot: amount,
+        created_by: A.id,
+        ...(occurred_on ? { occurred_on } : {}),
+      });
   const { error: overErr } = await tx(60000, 'withdrawal');
   const { error: exactErr } = await tx(50000, 'withdrawal');
   const { data: opening } = await A.client
@@ -133,7 +149,11 @@ async function main() {
     .eq('kind', 'opening')
     .single();
   const { error: delOpenErr } = await A.client.from('transactions').delete().eq('id', opening?.id);
-  const { data: bal7 } = await A.client.from('savings_with_balance').select('balance_agorot').eq('id', savingId).single();
+  const { data: bal7 } = await A.client
+    .from('savings_with_balance')
+    .select('balance_agorot')
+    .eq('id', savingId)
+    .single();
   check(
     '7. over-withdrawal and negative-making delete are rejected',
     errMsg(overErr).includes('INSUFFICIENT_BALANCE') &&
@@ -146,7 +166,11 @@ async function main() {
   // 7b. Two phones withdrawing at once: exactly one succeeds
   await tx(10000, 'deposit');
   const [w1, w2] = await Promise.all([tx(6000, 'withdrawal'), tx(6000, 'withdrawal')]);
-  const { data: bal7b } = await A.client.from('savings_with_balance').select('balance_agorot').eq('id', savingId).single();
+  const { data: bal7b } = await A.client
+    .from('savings_with_balance')
+    .select('balance_agorot')
+    .eq('id', savingId)
+    .single();
   check(
     '7b. concurrent withdrawals cannot overdraw',
     [w1.error, w2.error].filter(Boolean).length === 1 && bal7b?.balance_agorot === 4000,
@@ -166,8 +190,12 @@ async function main() {
     p_notes: null,
     p_opening_agorot: 0,
   });
-  await A.client.from('transactions').insert({ saving_id: s2, kind: 'deposit', amount_agorot: 10000, created_by: A.id });
-  await A.client.from('transactions').insert({ saving_id: s2, kind: 'withdrawal', amount_agorot: 10000, created_by: A.id });
+  await A.client
+    .from('transactions')
+    .insert({ saving_id: s2, kind: 'deposit', amount_agorot: 10000, created_by: A.id });
+  await A.client
+    .from('transactions')
+    .insert({ saving_id: s2, kind: 'withdrawal', amount_agorot: 10000, created_by: A.id });
   const { error: delSavingErr } = await A.client.from('savings').delete().eq('id', s2);
   const { data: s2Tx } = await admin.from('transactions').select('id').eq('saving_id', s2);
   check('9. deleting a saving with withdrawals succeeds and removes history', !delSavingErr && s2Tx?.length === 0, {
@@ -186,7 +214,11 @@ async function main() {
     p_goal_date: utcDatePlus(365),
   });
   const ins = (kind: string, amount: number) =>
-    A.client.from('transactions').insert({ saving_id: s3, kind, amount_agorot: amount, created_by: A.id }).select('id').single();
+    A.client
+      .from('transactions')
+      .insert({ saving_id: s3, kind, amount_agorot: amount, created_by: A.id })
+      .select('id')
+      .single();
   const { data: g1, error: gErr } = await ins('gain', 10000);
   const { error: lErr } = await ins('loss', 4000);
   const { data: v9b } = await A.client
@@ -197,8 +229,12 @@ async function main() {
   const { error: bigLossErr } = await ins('loss', 1000000);
   check(
     '9b. gain/loss update balance and gains; oversized loss rejected; goal saved',
-    !gErr && !lErr && v9b?.balance_agorot === 56000 && v9b?.gains_agorot === 6000 &&
-      v9b?.goal_agorot === 100000 && v9b?.goal_date === utcDatePlus(365) &&
+    !gErr &&
+      !lErr &&
+      v9b?.balance_agorot === 56000 &&
+      v9b?.gains_agorot === 6000 &&
+      v9b?.goal_agorot === 100000 &&
+      v9b?.goal_date === utcDatePlus(365) &&
       errMsg(bigLossErr).includes('INSUFFICIENT_BALANCE'),
     { gErr, lErr, v9b, bigLossErr },
   );
@@ -206,11 +242,66 @@ async function main() {
   // 9c. Deleting a gain that would go negative is rejected
   await ins('loss', 56000); // balance now 0
   const { error: delGainErr } = await A.client.from('transactions').delete().eq('id', g1?.id);
-  check('9c. deleting a gain that would overdraw is rejected', errMsg(delGainErr).includes('INSUFFICIENT_BALANCE'), delGainErr);
+  check(
+    '9c. deleting a gain that would overdraw is rejected',
+    errMsg(delGainErr).includes('INSUFFICIENT_BALANCE'),
+    delGainErr,
+  );
 
   // 9d. Goal date without amount is rejected
-  const { error: goalDateErr } = await A.client.from('savings').update({ goal_agorot: null, goal_date: utcDatePlus(30) }).eq('id', s3);
+  const { error: goalDateErr } = await A.client
+    .from('savings')
+    .update({ goal_agorot: null, goal_date: utcDatePlus(30) })
+    .eq('id', s3);
   check('9d. goal date without goal amount is rejected', !!goalDateErr, goalDateErr);
+
+  // 9e. Fund yield: applies once atomically, can't be applied twice or by outsiders
+  await A.client.from('savings').update({ fund_id: 999, fund_name: 'בדיקה', fund_synced_through: 202608 }).eq('id', s3);
+  const { data: before9e } = await A.client.from('savings_with_balance').select('balance_agorot').eq('id', s3).single();
+  const { error: applyErr } = await A.client.rpc('apply_fund_yield', {
+    p_saving_id: s3,
+    p_through: 202609,
+    p_kind: 'gain',
+    p_amount: 500,
+    p_note: 'תשואה רשמית ספטמבר 2026',
+  });
+  const { error: againApplyErr } = await A.client.rpc('apply_fund_yield', {
+    p_saving_id: s3,
+    p_through: 202609,
+    p_kind: 'gain',
+    p_amount: 500,
+    p_note: null,
+  });
+  const { error: outsiderErr } = await B.client.rpc('apply_fund_yield', {
+    p_saving_id: s3,
+    p_through: 202610,
+    p_kind: 'gain',
+    p_amount: 500,
+    p_note: null,
+  });
+  const { error: advanceErr } = await A.client.rpc('apply_fund_yield', {
+    p_saving_id: s3,
+    p_through: 202610,
+    p_kind: null,
+    p_amount: 0,
+    p_note: null,
+  });
+  const { data: after9e } = await A.client
+    .from('savings_with_balance')
+    .select('balance_agorot, fund_synced_through, fund_id')
+    .eq('id', s3)
+    .single();
+  check(
+    '9e. fund yield applies once, rejects repeats and outsiders, advance-only works',
+    !applyErr &&
+      errMsg(againApplyErr).includes('ALREADY_APPLIED') &&
+      errMsg(outsiderErr).includes('NOT_FOUND') &&
+      !advanceErr &&
+      after9e?.balance_agorot === (before9e?.balance_agorot ?? 0) + 500 &&
+      after9e?.fund_synced_through === 202610 &&
+      after9e?.fund_id === 999,
+    { applyErr, againApplyErr, outsiderErr, advanceErr, before9e, after9e },
+  );
 
   // 10. Non-owner cannot manage
   const { error: regenErr } = await C.client.rpc('regenerate_invite_code');
@@ -225,7 +316,11 @@ async function main() {
   const { error: removeErr } = await A.client.rpc('remove_member', { p_user_id: C.id });
   const { data: cAfter } = await C.client.from('savings_with_balance').select('id');
   const { data: cHid } = await C.client.rpc('my_household_id');
-  check('11. removed member sees nothing', !removeErr && cAfter?.length === 0 && cHid === null, { removeErr, cAfter, cHid });
+  check('11. removed member sees nothing', !removeErr && cAfter?.length === 0 && cHid === null, {
+    removeErr,
+    cAfter,
+    cHid,
+  });
 
   // 11b. Removed member cannot probe the balance through error messages
   const { error: probeSmall } = await C.client
@@ -236,7 +331,10 @@ async function main() {
     .insert({ saving_id: savingId, kind: 'withdrawal', amount_agorot: 99999999999, created_by: C.id });
   check(
     '11b. outsider withdrawals fail identically (no balance oracle)',
-    !!probeSmall && !!probeHuge && errMsg(probeSmall) === errMsg(probeHuge) && !errMsg(probeHuge).includes('INSUFFICIENT_BALANCE'),
+    !!probeSmall &&
+      !!probeHuge &&
+      errMsg(probeSmall) === errMsg(probeHuge) &&
+      !errMsg(probeHuge).includes('INSUFFICIENT_BALANCE'),
     { probeSmall, probeHuge },
   );
 

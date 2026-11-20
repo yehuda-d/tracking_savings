@@ -12,6 +12,7 @@ import { AppText } from './AppText';
 import { Button } from './Button';
 import { Chip } from './Chip';
 import { DateField } from './DateField';
+import { FundPicker, type PickedFund } from './FundPicker';
 import { TextField } from './TextField';
 
 export type SavingFormValue = SavingInput & { openingAgorot?: number };
@@ -33,6 +34,13 @@ export function SavingForm({ mode, initial, submitting, serverError, onSubmit }:
   const [hasGoal, setHasGoal] = useState(initial?.goal_agorot != null);
   const [goal, setGoal] = useState(initial?.goal_agorot != null ? agorotToInput(initial.goal_agorot) : '');
   const [goalDate, setGoalDate] = useState(initial?.goal_date ?? '');
+  const [fund, setFund] = useState<{ id: number; name: string; syncedThrough: number | null } | null>(
+    initial?.fund_id
+      ? { id: initial.fund_id, name: initial.fund_name ?? '', syncedThrough: initial.fund_synced_through ?? null }
+      : null,
+  );
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const canLinkFund = locationType === 'provident_fund' || locationType === 'study_fund';
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   function submit() {
@@ -50,7 +58,14 @@ export function SavingForm({ mode, initial, submitting, serverError, onSubmit }:
       return;
     }
     setErrors({});
-    onSubmit(result.value);
+    // Official returns exist only for provident/study funds; other types are unlinked.
+    const linked = canLinkFund ? fund : null;
+    onSubmit({
+      ...result.value,
+      fund_id: linked?.id ?? null,
+      fund_name: linked?.name ?? null,
+      fund_synced_through: linked?.syncedThrough ?? null,
+    });
   }
 
   return (
@@ -114,6 +129,41 @@ export function SavingForm({ mode, initial, submitting, serverError, onSubmit }:
         maxLength={500}
         multiline
         placeholder="למשל: ריבית קבועה עד 2027"
+      />
+
+      {canLinkFund ? (
+        <View style={styles.goalBox}>
+          <AppText weight="bold">עדכון תשואה אוטומטי (לא חובה)</AppText>
+          {fund ? (
+            <>
+              <AppText>{fund.name}</AppText>
+              <AppText size="xs" color={colors.textMuted}>
+                {`מס׳ קופה ${fund.id} · האפליקציה תציע לעדכן את השווי כשתתפרסם תשואה חודשית חדשה`}
+              </AppText>
+              <View style={styles.goalHeader}>
+                <Button title="החלפת קרן" variant="ghost" compact onPress={() => setPickerOpen(true)} />
+                <Button title="הסרת קישור" variant="ghost" compact onPress={() => setFund(null)} />
+              </View>
+            </>
+          ) : (
+            <>
+              <AppText size="sm" color={colors.textMuted}>
+                מקשרים את החיסכון לקרן, והאפליקציה תציע לעדכן את השווי לפי התשואה הרשמית שמתפרסמת כל חודש.
+              </AppText>
+              <Button title="קישור לקרן" icon="link-variant" variant="secondary" onPress={() => setPickerOpen(true)} />
+            </>
+          )}
+        </View>
+      ) : null}
+      <FundPicker
+        visible={pickerOpen}
+        initialQuery={fund ? '' : institution}
+        onClose={() => setPickerOpen(false)}
+        onPick={(p: PickedFund) => {
+          // The value entered now is assumed to include every month published so far.
+          setFund({ id: p.fundId, name: p.name, syncedThrough: p.period });
+          setPickerOpen(false);
+        }}
       />
 
       {hasGoal ? (

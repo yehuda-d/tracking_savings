@@ -12,6 +12,7 @@ const MESSAGES: [fragment: string, hebrew: string][] = [
   ['NOT_IN_HOUSEHOLD', 'אינך חבר במשק בית'],
   ['NOT_AUTHENTICATED', 'צריך להתחבר מחדש'],
   ['NOT_FOUND', 'הפריט לא נמצא. ייתכן שנמחק'],
+  ['ALREADY_APPLIED', 'העדכון הזה כבר נרשם (אולי מהטלפון השני)'],
   ['LAST_MEMBER', 'אתה החבר האחרון. עזיבה תמחק את משק הבית'],
   ['Invalid login credentials', 'אימייל או סיסמה שגויים'],
   ['User already registered', 'כבר קיים משתמש עם האימייל הזה'],

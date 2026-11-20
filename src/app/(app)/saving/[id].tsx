@@ -9,6 +9,7 @@ import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Screen } from '@/components/Screen';
+import { FundYieldCard } from '@/components/FundYieldCard';
 import { GoalDetails } from '@/components/GoalProgress';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { TransactionSheet } from '@/components/TransactionSheet';
@@ -137,6 +138,8 @@ export default function SavingDetail() {
           </View>
         ) : null}
       </Card>
+
+      <FundYieldCard saving={s} />
 
       {s.goal_agorot ? (
         <Card>
