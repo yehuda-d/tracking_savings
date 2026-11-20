@@ -1,4 +1,4 @@
-import { formatPeriodHe, formatPeriodsHe, yieldSuggestion } from '../fundYield';
+import { formatPeriodHe, formatPeriodsHe, rankFunds, yieldSuggestion } from '../fundYield';
 
 describe('formatPeriodHe', () => {
   it('names the month in Hebrew', () => {
@@ -75,5 +75,19 @@ describe('yieldSuggestion', () => {
         202607,
       ),
     ).toMatchObject({ periods: [202609], throughPeriod: 202609 });
+  });
+});
+
+describe('rankFunds', () => {
+  const f = (fundId: number, name: string, manager = 'מיטב גמל ופנסיה') => ({ fundId, name, manager, classification: 'קרנות השתלמות' });
+  it('puts funds whose own name matches more query words first', () => {
+    const ranked = rankFunds(
+      [f(289, 'קרן השתלמות לעובדי בנק ישראל'), f(1487, 'מיטב השתלמות בניהול אישי'), f(880, 'מיטב השתלמות כללי')],
+      'מיטב השתלמות כללי',
+    );
+    expect(ranked.map((x) => x.fundId)).toEqual([880, 1487, 289]);
+  });
+  it('keeps the original order for ties', () => {
+    expect(rankFunds([f(1, 'א ב'), f(2, 'א ג')], 'א').map((x) => x.fundId)).toEqual([1, 2]);
   });
 });

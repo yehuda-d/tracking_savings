@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
-import type { MonthlyYield } from '@/lib/fundYield';
+import { rankFunds, type MonthlyYield } from '@/lib/fundYield';
 
 /**
  * Official Gemel-Net data (Capital Market Authority) on data.gov.il.
@@ -64,24 +64,21 @@ export async function searchFunds(query: string): Promise<{ period: number; resu
     limit: 30,
     distinct: 'true',
     fields: 'FUND_ID,FUND_NAME,MANAGING_CORPORATION,FUND_CLASSIFICATION',
-    sort: 'FUND_NAME',
   };
   if (/^\d+$/.test(q)) filters.FUND_ID = Number(q);
-  else params.q = q;
+  else params.q = q; // full-text search; results come back ranked by relevance
   params.filters = JSON.stringify(filters);
 
   const r = await ckan<{
     records: { FUND_ID: number; FUND_NAME: string; MANAGING_CORPORATION: string; FUND_CLASSIFICATION: string }[];
   }>('datastore_search', params);
-  return {
-    period,
-    results: r.records.map((x) => ({
+  const mapped = r.records.map((x) => ({
       fundId: x.FUND_ID,
       name: x.FUND_NAME.trim(),
       manager: x.MANAGING_CORPORATION.trim(),
       classification: x.FUND_CLASSIFICATION.trim(),
-    })),
-  };
+    }));
+  return { period, results: rankFunds(mapped, q) };
 }
 
 /** The last two years of monthly returns for one fund. */

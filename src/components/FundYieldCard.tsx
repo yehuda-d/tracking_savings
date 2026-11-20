@@ -70,7 +70,7 @@ export function FundYieldCard({ saving }: { saving: SavingWithBalance }) {
       </AppText>
       <AppText color={colors.textMuted}>
         {`שווי מעודכן: ${ltr(formatAgorot(s.newValueAgorot))}`}
-        {s.kind ? ` (${ltr(formatSignedAgorot(Math.abs(s.deltaAgorot), s.kind))})` : ''}
+        {s.kind ? ` · ${ltr(formatSignedAgorot(Math.abs(s.deltaAgorot), s.kind))}` : ''}
       </AppText>
       <AppText size="xs" color={colors.textMuted}>
         זו תשואת הקרן לפני דמי הניהול האישיים שלכם, אז ייתכן הבדל קטן מהדוח.

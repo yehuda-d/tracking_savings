@@ -64,3 +64,13 @@ export function yieldSuggestion(
     kind: deltaAgorot > 0 ? 'gain' : deltaAgorot < 0 ? 'loss' : null,
   };
 }
+
+/** Orders search results so funds whose own name contains more of the query words come first (stable). */
+export function rankFunds<T extends { name: string }>(results: readonly T[], query: string): T[] {
+  const words = query.trim().split(/\s+/).filter(Boolean);
+  const score = (name: string) => words.filter((w) => name.includes(w)).length;
+  return results
+    .map((r, i) => ({ r, i, s: score(r.name) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((x) => x.r);
+}
